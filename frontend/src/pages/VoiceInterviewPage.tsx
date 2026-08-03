@@ -738,13 +738,13 @@ export default function VoiceInterviewPage() {
   if (!autoStartRef.current && !presetVoiceConfig && !resumeSessionId) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center p-6">
-        <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-8 text-center max-w-md w-full">
+        <div className="bg-surface rounded-xl border border-outline-variant shadow-sm p-8 text-center max-w-md w-full">
           <AlertCircle className="w-12 h-12 text-yellow-500 mx-auto mb-4" />
-          <p className="text-slate-700 dark:text-slate-200 text-lg font-semibold mb-2">未检测到语音面试配置</p>
-          <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">请从面试记录或"语音面试"入口开始</p>
+          <p className="text-on-surface-variant text-lg font-semibold mb-2">未检测到语音面试配置</p>
+          <p className="text-on-surface-variant text-sm mb-6">请从面试记录或"语音面试"入口开始</p>
           <button
             onClick={handleCloseModal}
-            className="px-6 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
+            className="px-6 py-2 bg-primary-container text-on-primary rounded-lg hover:bg-primary-container transition-colors"
           >
             返回重新开始
           </button>
@@ -763,7 +763,7 @@ export default function VoiceInterviewPage() {
         />
 
         {error && (
-          <div className="mb-6 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 px-4 py-3 rounded-xl flex items-center gap-2">
+          <div className="mb-6 bg-error-container/50 text-error rounded-xl flex items-center gap-2">
             <AlertCircle className="w-4 h-4" />
             <span className="text-sm">{error}</span>
           </div>
@@ -771,23 +771,23 @@ export default function VoiceInterviewPage() {
 
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
           <div className="xl:col-span-2 space-y-6">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-6">
+            <div className="bg-surface rounded-xl border border-outline-variant shadow-sm p-6">
               <div className="flex items-center justify-between mb-6 flex-wrap gap-3">
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => navigate('/interviews')}
-                    className="w-9 h-9 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors flex items-center justify-center"
+                    className="w-9 h-9 rounded-lg bg-surface-container-high text-on-surface-variant hover:bg-surface-container transition-colors flex items-center justify-center"
                     title="返回面试记录"
                   >
                     <ArrowLeft className="w-4 h-4" />
                   </button>
                   <div>
-                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{templateName || effectiveSkillId}</h2>
+                    <h2 className="text-lg font-semibold text-on-surface">{templateName || effectiveSkillId}</h2>
                     <div className="flex items-center gap-2 mt-1">
-                      <span className="text-xs px-2 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary-600 dark:text-primary-300 rounded-full">
+                      <span className="text-xs px-2 py-0.5 bg-primary-100 dark:bg-primary-900/40 text-primary rounded-full">
                         {getPhaseLabel(currentPhase)}
                       </span>
-                      <span className="text-xs text-slate-500 dark:text-slate-400">
+                      <span className="text-xs text-on-surface-variant">
                         {connectionStatus === 'connected'
                           ? isAsrReady ? '语音识别就绪' : '语音识别准备中'
                           : connectionStatus === 'connecting' ? '连接中' : '连接断开'}
@@ -796,7 +796,7 @@ export default function VoiceInterviewPage() {
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200">
+                <div className="flex items-center gap-2 px-3 py-2 rounded-xl bg-surface-container-high text-on-surface-variant">
                   <Clock className="w-4 h-4" />
                   <span className="font-mono text-sm tabular-nums">{formatTime(currentTime)}</span>
                 </div>
@@ -808,14 +808,14 @@ export default function VoiceInterviewPage() {
                   transition={{ repeat: Infinity, duration: 2 }}
                   className={`w-32 h-32 rounded-full border-4 flex items-center justify-center mb-6 transition-colors
                     ${isAiSpeaking
-                      ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                      : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/60'
+                      ? 'border-primary-container bg-primary-container/20'
+                      : 'border-outline-variant bg-surface-container-lowest'
                     }`}
                 >
-                  <Bot className={`w-14 h-14 ${isAiSpeaking ? 'text-primary-500' : 'text-slate-400 dark:text-slate-500'}`} />
+                  <Bot className={`w-14 h-14 ${isAiSpeaking ? 'text-primary-container' : 'text-outline'}`} />
                 </motion.div>
 
-                <div className="w-full max-w-2xl min-h-[130px] rounded-2xl bg-slate-50 dark:bg-slate-900/60 border border-slate-200 dark:border-slate-700 px-6 py-5 text-center flex items-center justify-center">
+                <div className="w-full max-w-2xl min-h-[130px] rounded-xl bg-surface-container-lowest border border-outline-variant px-6 py-5 text-center flex items-center justify-center">
                   <AnimatePresence mode="wait">
                     {isAiSpeaking || aiText ? (
                       <motion.p
@@ -823,7 +823,7 @@ export default function VoiceInterviewPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="text-lg md:text-xl font-medium text-slate-800 dark:text-slate-100 leading-relaxed"
+                        className="text-lg md:text-xl font-medium text-on-surface leading-relaxed"
                       >
                         {aiText || '思考中...'}
                       </motion.p>
@@ -833,7 +833,7 @@ export default function VoiceInterviewPage() {
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0 }}
-                        className="text-lg md:text-xl font-medium text-primary-600 dark:text-primary-300 italic leading-relaxed"
+                        className="text-lg md:text-xl font-medium text-primary italic leading-relaxed"
                       >
                         {userText}
                       </motion.p>
@@ -842,7 +842,7 @@ export default function VoiceInterviewPage() {
                         key="idle"
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
-                        className="text-slate-500 dark:text-slate-400"
+                        className="text-on-surface-variant"
                       >
                         {recorderHint}
                       </motion.p>
@@ -852,7 +852,7 @@ export default function VoiceInterviewPage() {
               </div>
             </div>
 
-            <div className="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm p-5">
+            <div className="bg-surface rounded-xl border border-outline-variant shadow-sm p-5">
               <div className="flex items-center justify-center gap-6">
                 <button
                   onClick={() => {
@@ -860,7 +860,7 @@ export default function VoiceInterviewPage() {
                     handlePause(choice ? 'short' : 'long');
                   }}
                   disabled={connectionStatus !== 'connected'}
-                  className="px-4 py-2 rounded-xl bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50"
+                  className="px-4 py-2 rounded-xl bg-surface-container-high text-on-surface-variant hover:bg-surface-container transition-colors disabled:opacity-50"
                   title="暂停"
                 >
                   暂停
@@ -880,8 +880,8 @@ export default function VoiceInterviewPage() {
                   disabled={!canSubmit}
                   className={`px-5 py-2.5 rounded-xl font-medium text-sm transition-all ${
                     canSubmit
-                      ? 'bg-primary-500 text-white hover:bg-primary-600 shadow-md shadow-primary-500/30'
-                      : 'bg-slate-100 dark:bg-slate-700 text-slate-400 dark:text-slate-500 cursor-not-allowed'
+                      ? 'bg-primary-container text-on-primary hover:bg-primary-container shadow-sm'
+                      : 'bg-surface-container-high text-outline cursor-not-allowed'
                   }`}
                   title="提交回答"
                 >
@@ -903,13 +903,13 @@ export default function VoiceInterviewPage() {
                   </span>
                 </button>
               </div>
-              <p className="text-center text-xs text-slate-500 dark:text-slate-400 mt-3">
+              <p className="text-center text-xs text-on-surface-variant mt-3">
                 {footerHint}
               </p>
             </div>
           </div>
 
-          <div className="h-[520px] md:h-[560px] xl:h-[calc(100vh-240px)] xl:max-h-[760px] bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm overflow-hidden">
+          <div className="h-[520px] md:h-[560px] xl:h-[calc(100vh-240px)] xl:max-h-[760px] bg-surface rounded-xl border border-outline-variant shadow-sm overflow-hidden">
             <RealtimeSubtitle
               messages={messages}
               userText={userText}

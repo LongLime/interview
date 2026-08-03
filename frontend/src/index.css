@@ -1,40 +1,106 @@
 @import "tailwindcss";
-@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&family=DM+Sans:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Hanken+Grotesk:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200&display=swap');
 @plugin "@tailwindcss/typography";
 
-/* 启用深色模式 - 使用 class 策略 */
 @custom-variant dark (&:where(.dark, .dark *));
 
-
-/* 自定义主题 */
 @theme {
-  --color-primary-50: #eef2ff;
-  --color-primary-100: #e0e7ff;
-  --color-primary-200: #c7d2fe;
-  --color-primary-300: #a5b4fc;
-  --color-primary-400: #818cf8;
-  --color-primary-500: #6366f1;
-  --color-primary-600: #4f46e5;
-  --color-primary-700: #4338ca;
-  --color-primary-800: #3730a3;
-  --color-primary-900: #312e81;
-  --color-primary-950: #1e1b4b;
+  --color-surface: #f6fbf8;
+  --color-surface-dim: #c5d9cf;
+  --color-surface-bright: #f6fbf8;
+  --color-surface-container-lowest: #ffffff;
+  --color-surface-container-low: #f0f6f2;
+  --color-surface-container: #eaf1ec;
+  --color-surface-container-high: #e4ece7;
+  --color-surface-container-highest: #dfebec;
+  --color-on-surface: #0b1c30;
+  --color-on-surface-variant: #3c4a42;
+  --color-inverse-surface: #213145;
+  --color-inverse-on-surface: #eaf1ff;
+  --color-outline: #85918a;
+  --color-outline-variant: #d8e2db;
+  --color-surface-tint: #006c49;
+  --color-primary: #006c49;
+  --color-on-primary: #ffffff;
+  --color-primary-container: #006c49;
+  --color-on-primary-container: #ffffff;
+  --color-inverse-primary: #4edea3;
+  --color-secondary: #2b6954;
+  --color-on-secondary: #ffffff;
+  --color-secondary-container: #adedd3;
+  --color-on-secondary-container: #306d58;
+  --color-tertiary: #55615a;
+  --color-on-tertiary: #ffffff;
+  --color-tertiary-container: #99a69e;
+  --color-on-tertiary-container: #303c36;
+  --color-error: #ba1a1a;
+  --color-on-error: #ffffff;
+  --color-error-container: #ffdad6;
+  --color-on-error-container: #93000a;
+  --color-primary-fixed: #6ffbbe;
+  --color-primary-fixed-dim: #4edea3;
+  --color-on-primary-fixed: #002113;
+  --color-on-primary-fixed-variant: #005236;
+  --color-secondary-fixed: #b0f0d6;
+  --color-secondary-fixed-dim: #95d3ba;
+  --color-on-secondary-fixed: #002117;
+  --color-on-secondary-fixed-variant: #0b513d;
+  --color-tertiary-fixed: #d9e6dd;
+  --color-tertiary-fixed-dim: #bdcac1;
+  --color-on-tertiary-fixed: #131e19;
+  --color-on-tertiary-fixed-variant: #3e4943;
+  --color-background: #f6fbf8;
+  --color-on-background: #0b1c30;
+  --color-surface-variant: #dfebec;
 
-  --font-display: 'Outfit', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
-  --font-sans: 'DM Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'PingFang SC', sans-serif;
+  --font-display: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+  --font-sans: 'Hanken Grotesk', -apple-system, BlinkMacSystemFont, 'PingFang SC', sans-serif;
+
+  --font-headline-lg: 'Hanken Grotesk';
+  --font-headline-md: 'Hanken Grotesk';
+  --font-body-lg: 'Hanken Grotesk';
+  --font-body-md: 'Hanken Grotesk';
+  --font-label-md: 'Hanken Grotesk';
+  --font-label-sm: 'Hanken Grotesk';
+  --font-headline-lg-mobile: 'Hanken Grotesk';
+  --font-display-lg: 'Hanken Grotesk';
+
+  --radius-sm: 0.125rem;
+  --radius-lg: 0.25rem;
+  --radius-xl: 0.5rem;
+  --radius-full: 0.75rem;
 }
 
-/* 自定义基础样式 */
 @layer base {
   html, body, #root {
     @apply h-full m-0 p-0;
   }
 
+  .material-symbols-outlined {
+    font-family: 'Material Symbols Outlined';
+    font-weight: normal;
+    font-style: normal;
+    font-size: 24px;
+    line-height: 1;
+    letter-spacing: normal;
+    text-transform: none;
+    display: inline-block;
+    white-space: nowrap;
+    word-wrap: normal;
+    direction: ltr;
+    -webkit-font-smoothing: antialiased;
+  }
+
   body {
     @apply antialiased;
     font-family: var(--font-sans);
-    @apply bg-gradient-to-br from-slate-50 via-white to-indigo-50 text-slate-900;
-    @apply dark:bg-gradient-to-br dark:from-slate-950 dark:via-slate-900 dark:to-slate-800 dark:text-slate-50;
+    @apply bg-background text-on-background;
+  }
+
+  .dark body {
+    background-color: #0b1326;
+    color: #dae2fd;
   }
 
   #root {
@@ -47,73 +113,175 @@
   }
 }
 
-/* 深色模式通用样式 - 自动应用于所有卡片和容器 */
-@layer components {
-    /* 通用卡片背景 */
-    .dark-card {
-        @apply bg-white dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50;
-        @apply shadow-lg shadow-slate-200/50 dark:shadow-slate-900/50;
-    }
-
-    /* 通用输入框 */
-    .dark-input {
-        @apply bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-900 dark:text-slate-100;
-        @apply focus:ring-2 focus:ring-primary-500/20 focus:border-primary-500 dark:focus:ring-primary-400/20 dark:focus:border-primary-400;
-        @apply transition-all duration-200;
-    }
-
-    /* 通用文字颜色 */
-    .dark-text {
-        @apply text-slate-900 dark:text-slate-50;
-    }
-
-    .dark-text-muted {
-        @apply text-slate-600 dark:text-slate-400;
-    }
-
-    /* 按钮基础样式 */
-    .btn-primary {
-        @apply bg-gradient-to-r from-primary-600 to-primary-500 dark:from-primary-500 dark:to-primary-400;
-        @apply text-white font-medium;
-        @apply hover:from-primary-700 hover:to-primary-600 dark:hover:from-primary-600 dark:hover:to-primary-500;
-        @apply active:scale-[0.98];
-        @apply shadow-lg shadow-primary-500/25 dark:shadow-primary-500/20;
-        @apply transition-all duration-200;
-    }
-
-    .btn-secondary {
-        @apply bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200;
-        @apply hover:bg-slate-200 dark:hover:bg-slate-700;
-        @apply active:scale-[0.98];
-        @apply border border-slate-200 dark:border-slate-700;
-        @apply transition-all duration-200;
-    }
-
-    /* 状态徽章 */
-    .status-badge {
-        @apply px-3 py-1.5 rounded-full text-xs font-semibold tracking-wide uppercase;
-        @apply border backdrop-blur-sm;
-    }
+.dark {
+  --color-surface: #0b1326;
+  --color-surface-dim: #0b1326;
+  --color-surface-bright: #31394d;
+  --color-surface-container-lowest: #060e20;
+  --color-surface-container-low: #131b2e;
+  --color-surface-container: #171f33;
+  --color-surface-container-high: #222a3d;
+  --color-surface-container-highest: #2d3449;
+  --color-on-surface: #dae2fd;
+  --color-on-surface-variant: #c6c5d5;
+  --color-inverse-surface: #dae2fd;
+  --color-inverse-on-surface: #283044;
+  --color-outline: #5a5a6a;
+  --color-outline-variant: #2d3040;
+  --color-surface-tint: #4edea3;
+  --color-primary: #4edea3;
+  --color-on-primary: #003824;
+  --color-primary-container: #005236;
+  --color-on-primary-container: #6ffbbe;
+  --color-inverse-primary: #006c49;
+  --color-secondary: #95d3ba;
+  --color-on-secondary: #003823;
+  --color-secondary-container: #0b513d;
+  --color-on-secondary-container: #adedd3;
+  --color-tertiary: #f7bd3e;
+  --color-on-tertiary: #402d00;
+  --color-tertiary-container: #c08d00;
+  --color-on-tertiary-container: #3e2b00;
+  --color-error: #ffb4ab;
+  --color-on-error: #690005;
+  --color-error-container: #93000a;
+  --color-on-error-container: #ffdad6;
+  --color-primary-fixed: #6ffbbe;
+  --color-primary-fixed-dim: #4edea3;
+  --color-on-primary-fixed: #002113;
+  --color-on-primary-fixed-variant: #005236;
+  --color-secondary-fixed: #b0f0d6;
+  --color-secondary-fixed-dim: #95d3ba;
+  --color-on-secondary-fixed: #002117;
+  --color-on-secondary-fixed-variant: #0b513d;
+  --color-tertiary-fixed: #ffdea3;
+  --color-tertiary-fixed-dim: #f7bd3e;
+  --color-on-tertiary-fixed: #261900;
+  --color-on-tertiary-fixed-variant: #5d4200;
+  --color-background: #0b1326;
+  --color-on-background: #dae2fd;
+  --color-surface-variant: #2d3449;
 }
 
-/* 自定义滚动条 */
+@layer components {
+  .glass-nav {
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  .soft-shadow-light {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .soft-shadow-dark {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  }
+
+  .soft-shadow {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .dark .soft-shadow {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  }
+
+  .hover-lift {
+    transition: transform 0.2s ease-in-out, box-shadow 0.2s ease-in-out;
+  }
+
+  .hover-lift:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.08), 0 4px 6px -4px rgb(0 0 0 / 0.04);
+  }
+
+  .dark .hover-lift:hover {
+    box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.2), 0 4px 6px -4px rgb(0 0 0 / 0.15);
+  }
+
+  .search-focus:focus-within {
+    box-shadow: 0 0 0 4px rgba(16, 185, 129, 0.1);
+    border-color: #10b981;
+  }
+
+  .dark .search-focus:focus-within {
+    box-shadow: 0 0 0 4px rgba(78, 222, 163, 0.2);
+    border-color: #4edea3;
+  }
+
+  .dark-card {
+    @apply bg-surface rounded-xl border border-outline-variant/30;
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.05), 0 2px 4px -2px rgb(0 0 0 / 0.05);
+  }
+
+  .dark .dark-card {
+    box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.2), 0 2px 4px -2px rgb(0 0 0 / 0.2);
+  }
+
+  .dark-input {
+    @apply bg-surface-container-lowest border border-outline-variant text-on-surface placeholder:text-outline rounded-lg;
+    transition: all 0.2s;
+  }
+
+  .dark-input:focus-within {
+    --tw-ring-shadow: none;
+  }
+
+  .dark-input:focus {
+    border-color: var(--color-primary-container);
+    outline: none;
+  }
+
+  .dark-text {
+    @apply text-on-surface;
+  }
+
+  .dark-text-muted {
+    @apply text-on-surface-variant;
+  }
+
+  .btn-primary {
+    @apply bg-primary-container text-on-primary font-medium px-5 py-2.5 rounded-xl hover:opacity-90 active:scale-95 transition-all shadow-sm hover:shadow-md;
+  }
+
+  .btn-secondary {
+    @apply bg-transparent border border-outline-variant text-on-surface hover:bg-surface-container transition-colors font-medium px-5 py-2.5 rounded-xl;
+  }
+
+  .btn-ghost {
+    @apply bg-transparent text-primary hover:bg-surface-container-high transition-colors font-medium;
+  }
+
+  .status-badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .status-success {
+    @apply bg-secondary-container text-on-secondary-container;
+  }
+
+  .status-processing {
+    @apply bg-surface-variant text-on-surface-variant;
+  }
+
+  .status-error {
+    @apply bg-error-container text-error;
+  }
+}
+
 @layer utilities {
   .scrollbar-thin::-webkit-scrollbar {
     @apply w-2 h-2;
   }
 
-    .scrollbar-thin::-webkit-scrollbar-track {
-    @apply bg-slate-100 rounded;
-        @apply dark:bg-slate-800;
+  .scrollbar-thin::-webkit-scrollbar-track {
+    @apply bg-surface-container-low rounded;
   }
 
-    .scrollbar-thin::-webkit-scrollbar-thumb {
-    @apply bg-slate-300 rounded hover:bg-slate-400;
-        @apply dark:bg-slate-600 dark:hover:bg-slate-500;
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    @apply bg-outline-variant rounded hover:bg-outline;
   }
 }
 
-/* React Big Calendar 自定义样式 */
 @layer components {
   .rbc-calendar {
     @apply font-sans;
@@ -125,58 +293,57 @@
 
   .rbc-toolbar button {
     @apply px-4 py-2 rounded-lg font-medium text-sm;
-    @apply bg-slate-100/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-200;
-    @apply border border-slate-200/50 dark:border-slate-700/50;
-    @apply hover:bg-slate-200/90 dark:hover:bg-slate-700/90;
+    @apply bg-surface-container-low text-on-surface-variant;
+    @apply border border-outline-variant/50;
+    @apply hover:bg-surface-container hover:text-on-surface;
     @apply backdrop-blur-sm;
     @apply transition-all duration-200;
   }
 
   .rbc-toolbar button.rbc-active {
-    @apply bg-primary-600/90 dark:bg-primary-500/90 text-white;
-    @apply border-primary-600/90 dark:border-primary-500/90;
-    @apply shadow-lg shadow-primary-500/20;
+    @apply bg-primary-container/90 text-on-primary;
+    @apply border-primary-container/90;
+    @apply shadow-lg shadow-primary-container/20;
     @apply backdrop-blur-sm;
   }
 
   .rbc-toolbar-label {
-    @apply font-display font-bold text-lg text-slate-900 dark:text-white;
+    @apply font-display font-bold text-lg text-on-surface;
   }
 
   .rbc-header {
     @apply py-3 font-display font-semibold text-sm uppercase tracking-wide;
-    @apply bg-slate-50/80 dark:bg-slate-800/80 text-slate-700 dark:text-slate-300;
-    @apply border-b-2 border-slate-200/50 dark:border-slate-700/50;
+    @apply bg-surface-container-low text-on-surface-variant;
+    @apply border-b border-outline-variant/30;
     @apply backdrop-blur-sm;
   }
 
   .rbc-month-view, .rbc-time-view, .rbc-agenda-view {
     @apply rounded-xl overflow-hidden;
-    @apply border border-slate-200 dark:border-slate-700/50;
+    @apply border border-outline-variant/30;
   }
 
   .rbc-day-bg, .rbc-time-header-content, .rbc-time-gutter {
-    @apply bg-white dark:bg-slate-900/50;
+    @apply bg-surface-container-lowest;
   }
 
   .rbc-off-range-bg {
-    @apply bg-slate-50 dark:bg-slate-950/50;
+    @apply bg-surface;
   }
 
   .rbc-today {
-    @apply bg-primary-50/80;
-    @apply dark:bg-primary-950/40;
+    @apply bg-primary-container/10;
     @apply backdrop-blur-sm;
   }
 
   .rbc-time-slot {
-    @apply border-slate-100 dark:border-slate-800/50;
+    @apply border-outline-variant/20;
   }
 
   .rbc-event {
     @apply rounded-lg shadow-md;
     @apply transition-all duration-200;
-    @apply hover:shadow-xl hover:shadow-primary-500/20 hover:scale-[1.02];
+    @apply hover:shadow-xl hover:scale-[1.02];
     @apply backdrop-blur-sm;
   }
 
@@ -185,85 +352,80 @@
   }
 
   .rbc-month-row {
-    @apply border-slate-200 dark:border-slate-700/30;
+    @apply border-outline-variant/20;
   }
 
   .rbc-day-slot .rbc-time-slot {
-    @apply border-slate-100 dark:border-slate-800/30;
+    @apply border-outline-variant/20;
   }
 
   .rbc-time-view-resources .rbc-time-gutter {
-    @apply bg-slate-50/80 dark:bg-slate-800/30;
+    @apply bg-surface-container-low;
   }
 
   .rbc-time-header-content {
-    @apply border-slate-200 dark:border-slate-700/30;
+    @apply border-outline-variant/20;
   }
 
   .rbc-agenda-view table.rbc-agenda-table {
-    @apply border-slate-200 dark:border-slate-700/50;
-    @apply bg-white dark:bg-slate-900/50;
+    @apply border-outline-variant/30 bg-surface-container-lowest;
   }
 
   .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
-    @apply border-slate-100 dark:border-slate-800/30;
-    @apply py-3 px-4;
+    @apply border-outline-variant/15 py-3 px-4;
   }
 
   .rbc-agenda-view table.rbc-agenda-table .rbc-agenda-time-cell {
-    @apply font-display font-semibold text-slate-700 dark:text-slate-300;
+    @apply font-display font-semibold text-on-surface-variant;
   }
 
   .rbc-show-more {
-    @apply font-semibold text-primary-600 dark:text-primary-400;
-    @apply hover:text-primary-700 dark:hover:text-primary-300;
-    @apply transition-colors duration-200;
+    @apply font-semibold text-primary-container hover:text-primary transition-colors duration-200;
   }
 
-  /* 深色模式下日历单元格边框优化 */
   .dark .rbc-month-view,
   .dark .rbc-time-view,
   .dark .rbc-agenda-view {
-    @apply border-slate-700/50;
+    @apply border-outline-variant/30;
   }
 
   .dark .rbc-header {
-    @apply bg-slate-800/60 text-slate-200 border-slate-700/50;
+    @apply bg-surface-container text-on-surface-variant border-outline-variant/30;
   }
 
   .dark .rbc-day-bg {
-    @apply bg-slate-900/30;
+    @apply bg-surface-container-low/50;
   }
 
   .dark .rbc-off-range-bg {
-    @apply bg-slate-950/50 text-slate-500;
+    @apply bg-surface text-on-surface-variant;
   }
 
   .dark .rbc-today {
-    @apply bg-primary-950/30;
+    @apply bg-primary-container/20;
   }
 
   .dark .rbc-month-row {
-    @apply border-slate-700/30;
+    @apply border-outline-variant/20;
   }
 
   .dark .rbc-time-slot {
-    @apply border-slate-800/30;
+    @apply border-outline-variant/15;
   }
 
   .dark .rbc-time-header-content {
-    @apply bg-slate-800/40 border-slate-700/30;
+    @apply bg-surface-container-low border-outline-variant/20;
   }
 
   .dark .rbc-time-gutter {
-    @apply bg-slate-800/40;
+    @apply bg-surface-container-low;
   }
 
   .dark .rbc-agenda-view table.rbc-agenda-table {
-    @apply bg-slate-900/30 border-slate-700/50;
+    @apply bg-surface-container-low border-outline-variant/30;
   }
 
   .dark .rbc-agenda-view table.rbc-agenda-table tbody > tr > td {
-    @apply border-slate-800/30;
+    @apply border-outline-variant/15;
   }
 }

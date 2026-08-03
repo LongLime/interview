@@ -315,7 +315,7 @@ export default function AudioRecorder({
       {/* Volume Ripple Effect when recording */}
       {isRecording && (
         <div
-          className="absolute rounded-full border border-primary-500/50 pointer-events-none transition-all duration-75"
+          className="absolute rounded-full border border-primary-container/20 pointer-events-none transition-all duration-75"
           style={{
             width: `${100 + (volume / 255) * 100}%`,
             height: `${100 + (volume / 255) * 100}%`,
@@ -333,8 +333,8 @@ export default function AudioRecorder({
           transition-all duration-300 shadow-xl
           ${disabled && !isRecording ? 'opacity-50 cursor-not-allowed shadow-none' : ''}
           ${isRecording
-            ? 'bg-primary-500 hover:bg-primary-600 shadow-primary-500/40'
-            : 'bg-slate-700 hover:bg-slate-600 shadow-slate-900/50'
+            ? 'bg-primary-container hover:opacity-90 shadow-sm'
+            : 'bg-surface-container-high hover:bg-surface-container shadow-sm'
           }
         `}
         title={disabled && !isRecording ? '语音识别准备中' : isRecording ? '停止录音' : '开始说话'}
@@ -342,7 +342,7 @@ export default function AudioRecorder({
         {isRecording ? (
           <Mic className="w-7 h-7 text-white" />
         ) : (
-          <MicOff className="w-7 h-7 text-slate-300" />
+          <MicOff className="w-7 h-7 text-outline-variant" />
         )}
       </button>
     </div>

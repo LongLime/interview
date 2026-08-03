@@ -3,6 +3,7 @@
 import { Calendar, dayjsLocalizer, View } from 'react-big-calendar';
 import withDragAndDrop, { EventInteractionArgs } from 'react-big-calendar/lib/addons/dragAndDrop';
 import dayjs from 'dayjs';
+import 'dayjs/locale/zh-cn';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import 'react-big-calendar/lib/addons/dragAndDrop/styles.css';
 import './ScheduleCalendar.css';
@@ -120,6 +121,9 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     timeGutterFormat: 'HH:mm',
     eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
       `${dayjs(start).format('HH:mm')} - ${dayjs(end).format('HH:mm')}`,
+    dayHeaderFormat: 'M月D日 ddd',
+    dayRangeHeaderFormat: 'M月D日',
+    monthHeaderFormat: 'YYYY年M月',
   };
 
   const handleSelectEvent = (event: object) => {
@@ -130,7 +134,7 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-slate-900/50 backdrop-blur-xl rounded-2xl border border-slate-200/50 dark:border-slate-700/50 p-6 shadow-xl shadow-slate-200/50 dark:shadow-slate-900/50"
+      className="bg-surface backdrop-blur-xl rounded-xl border border-outline-variant p-6 shadow-sm"
     >
       <DnDCalendar
           localizer={localizer}

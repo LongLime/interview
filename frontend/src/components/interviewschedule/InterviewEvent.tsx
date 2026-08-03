@@ -17,9 +17,9 @@ export const InterviewEvent: React.FC<InterviewEventProps> = ({ event }) => {
       shadow: 'shadow-blue-200/60 dark:shadow-blue-500/20',
     },
     COMPLETED: {
-      bg: 'bg-emerald-100/90 dark:bg-emerald-500/25',
-      text: 'text-emerald-900 dark:text-emerald-100',
-      border: 'border-emerald-300/60 dark:border-emerald-400/40',
+      bg: 'bg-primary-container/10 dark:bg-primary-container/20',
+      text: 'text-on-primary-container dark:text-primary',
+      border: 'border-primary-container/40 dark:border-primary/30',
       shadow: 'shadow-emerald-200/60 dark:shadow-emerald-500/20',
     },
     CANCELLED: {

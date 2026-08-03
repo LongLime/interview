@@ -12,7 +12,6 @@ import type {
   ProviderTestResult, AsrConfig, TtsConfig, AsrConfigRequest, TtsConfigRequest,
 } from '../types/llmProvider';
 
-// Provider 预设：已知 Provider 的 Base URL、推荐模型和向量模型
 const PROVIDER_PRESETS: Record<string, {
   baseUrl: string;
   models: { value: string; label: string }[];
@@ -23,17 +22,17 @@ const PROVIDER_PRESETS: Record<string, {
   dashscope: {
     baseUrl: 'https://dashscope.aliyuncs.com/compatible-mode/v1',
     models: [
-      { value: 'qwen3.6-flash', label: 'Qwen3.6 Flash — 最新旗舰' },
-      { value: 'qwen3.5-plus', label: 'Qwen3.5 Plus — 高性能' },
-      { value: 'qwen3.5-flash', label: 'Qwen3.5 Flash — 性价比' },
-      { value: 'qwen3-max', label: 'Qwen3 Max — 旗舰' },
-      { value: 'qwen-max', label: 'Qwen Max — 稳定版' },
-      { value: 'qwen-plus', label: 'Qwen Plus — 均衡' },
-      { value: 'qwen-flash', label: 'Qwen Flash — 经济' },
-      { value: 'qwq-32b', label: 'QwQ-32B — 推理专用' },
+      { value: 'qwen3.6-flash', label: 'Qwen3.6 Flash - 最新旗舰' },
+      { value: 'qwen3.5-plus', label: 'Qwen3.5 Plus - 高性能' },
+      { value: 'qwen3.5-flash', label: 'Qwen3.5 Flash - 性价王' },
+      { value: 'qwen3-max', label: 'Qwen3 Max - 旗舰' },
+      { value: 'qwen-max', label: 'Qwen Max - 稳定版' },
+      { value: 'qwen-plus', label: 'Qwen Plus - 均衡' },
+      { value: 'qwen-flash', label: 'Qwen Flash - 经济' },
+      { value: 'qwq-32b', label: 'QwQ-32B - 推理专用' },
     ],
     embeddingModels: [
-      { value: 'text-embedding-v3', label: 'text-embedding-v3 — 推荐' },
+      { value: 'text-embedding-v3', label: 'text-embedding-v3 - 推荐' },
     ],
     embeddingDimensions: 1024,
     supportsEmbedding: true,
@@ -41,27 +40,27 @@ const PROVIDER_PRESETS: Record<string, {
   deepseek: {
     baseUrl: 'https://api.deepseek.com',
     models: [
-      { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash — 最新·快速' },
-      { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro — 最强推理' },
-      { value: 'deepseek-chat', label: 'DeepSeek V3.2 — 旧版对话（即将弃用）' },
-      { value: 'deepseek-reasoner', label: 'DeepSeek R1 — 旧版推理（即将弃用）' },
+      { value: 'deepseek-v4-flash', label: 'DeepSeek V4 Flash - 最新快速' },
+      { value: 'deepseek-v4-pro', label: 'DeepSeek V4 Pro - 最强推荐' },
+      { value: 'deepseek-chat', label: 'DeepSeek V3.2 - 旧版对话（即将弃用）' },
+      { value: 'deepseek-reasoner', label: 'DeepSeek R1 - 旧版推理（即将弃用）' },
     ],
     supportsEmbedding: false,
   },
   glm: {
     baseUrl: 'https://open.bigmodel.cn/api/coding/paas/v4',
     models: [
-      { value: 'glm-5.1', label: 'GLM-5.1 — 最新旗舰' },
-      { value: 'glm-5', label: 'GLM-5 — 旗舰' },
-      { value: 'glm-4.7', label: 'GLM-4.7 — Coding 强' },
-      { value: 'glm-4.7-flash', label: 'GLM-4.7 Flash — 免费' },
-      { value: 'glm-4.6', label: 'GLM-4.6 — 200K 上下文' },
-      { value: 'glm-4-plus', label: 'GLM-4 Plus — 高性能' },
-      { value: 'glm-4-air-250414', label: 'GLM-4 Air — 高性价比' },
-      { value: 'glm-4-flash-250414', label: 'GLM-4 Flash — 免费' },
+      { value: 'glm-5.1', label: 'GLM-5.1 - 最新旗舰' },
+      { value: 'glm-5', label: 'GLM-5 - 旗舰' },
+      { value: 'glm-4.7', label: 'GLM-4.7 - Coding 版' },
+      { value: 'glm-4.7-flash', label: 'GLM-4.7 Flash - 免费' },
+      { value: 'glm-4.6', label: 'GLM-4.6 - 200K 上下文' },
+      { value: 'glm-4-plus', label: 'GLM-4 Plus - 高性能' },
+      { value: 'glm-4-air-250414', label: 'GLM-4 Air - 高性价比' },
+      { value: 'glm-4-flash-250414', label: 'GLM-4 Flash - 免费' },
     ],
     embeddingModels: [
-      { value: 'embedding-3', label: 'embedding-3 — 推荐' },
+      { value: 'embedding-3', label: 'embedding-3 - 推荐' },
     ],
     embeddingDimensions: 1024,
     supportsEmbedding: true,
@@ -69,11 +68,11 @@ const PROVIDER_PRESETS: Record<string, {
   kimi: {
     baseUrl: 'https://api.moonshot.cn/v1',
     models: [
-      { value: 'kimi-k2.6', label: 'Kimi K2.6 — 最新最智能' },
-      { value: 'kimi-k2.5', label: 'Kimi K2.5 — 多模态' },
-      { value: 'kimi-k2', label: 'Kimi K2 — MoE 基座' },
-      { value: 'kimi-k2-thinking', label: 'Kimi K2 Thinking — 深度推理' },
-      { value: 'kimi-latest', label: 'kimi-latest — 自动最新' },
+      { value: 'kimi-k2.6', label: 'Kimi K2.6 - 最新最智能' },
+      { value: 'kimi-k2.5', label: 'Kimi K2.5 - 多模态' },
+      { value: 'kimi-k2', label: 'Kimi K2 - MoE 基座' },
+      { value: 'kimi-k2-thinking', label: 'Kimi K2 Thinking - 深度推理' },
+      { value: 'kimi-latest', label: 'kimi-latest - 自动最新' },
     ],
     supportsEmbedding: false,
   },
@@ -92,25 +91,24 @@ type StatusBadgeProps = {
   children: ReactNode;
 };
 
-const CARD_CLASS = `flex h-full min-h-[330px] flex-col rounded-xl border border-slate-200
-  bg-white p-5 shadow-sm transition-shadow hover:shadow-md dark:border-slate-700
-  dark:bg-slate-800`;
+const CARD_CLASS = `flex h-full min-h-[330px] flex-col rounded-xl border border-outline-variant
+  bg-surface p-5 shadow-sm transition-shadow hover:shadow-md`;
 
 const ICON_WRAP_CLASS = `flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg
-  bg-primary-50 text-primary-600 dark:bg-primary-900/30 dark:text-primary-300`;
+  bg-primary-container/10 text-primary-container`;
 
-const DETAILS_CLASS = `mb-4 flex-1 space-y-1 rounded-lg border border-slate-100 bg-slate-50/70
-  p-3 dark:border-slate-700/80 dark:bg-slate-900/30`;
+const DETAILS_CLASS = `mb-4 flex-1 space-y-1 rounded-lg border border-outline-variant bg-surface-container-lowest
+  p-3`;
 
 const ACTION_BAR_CLASS = `mt-auto flex min-h-12 flex-wrap items-center gap-2 border-t
-  border-slate-100 pt-3 dark:border-slate-700`;
+  border-outline-variant pt-3`;
 
 const ACTION_BUTTON_CLASS = `inline-flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs
   font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-50`;
 
 function StatusBadge({ icon, children }: StatusBadgeProps) {
   return (
-    <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary-50 px-2.5 text-xs font-semibold text-primary-700 dark:bg-primary-900/30 dark:text-primary-300">
+    <span className="inline-flex h-6 items-center gap-1.5 rounded-full bg-primary-container/10 px-2.5 text-xs font-semibold text-on-surface">
       {icon}
       {children}
     </span>
@@ -121,12 +119,12 @@ function ConfigRow({ label, value, title, monospace = false, emphasis = false }:
   return (
     <div
       className={`grid grid-cols-[108px_minmax(0,1fr)] items-start gap-3 rounded-md px-2 py-2 text-xs ${
-        emphasis ? 'bg-white shadow-sm ring-1 ring-slate-100 dark:bg-slate-800/80 dark:ring-slate-700' : ''
+        emphasis ? 'bg-surface shadow-sm ring-1 ring-outline-variant' : ''
       }`}
     >
-      <dt className="whitespace-nowrap text-slate-500 dark:text-slate-400">{label}</dt>
+      <dt className="whitespace-nowrap text-on-surface-variant">{label}</dt>
       <dd
-        className={`min-w-0 truncate text-right font-medium text-slate-700 dark:text-slate-200 ${
+        className={`min-w-0 truncate text-right font-medium text-on-surface ${
           monospace ? 'font-mono' : ''
         }`}
         title={title}
@@ -143,12 +141,10 @@ export default function SettingsPage() {
   const [defaultEmbeddingProviderId, setDefaultEmbeddingProviderId] = useState('');
   const [loading, setLoading] = useState(true);
 
-  // Modal state
   const [showModal, setShowModal] = useState(false);
   const [editingProvider, setEditingProvider] = useState<ProviderItem | null>(null);
   const [saving, setSaving] = useState(false);
 
-  // Form fields
   const [formId, setFormId] = useState('');
   const [formBaseUrl, setFormBaseUrl] = useState('');
   const [formApiKey, setFormApiKey] = useState('');
@@ -161,17 +157,14 @@ export default function SettingsPage() {
   const [showModelDropdown, setShowModelDropdown] = useState(false);
   const [showEmbeddingDropdown, setShowEmbeddingDropdown] = useState(false);
 
-  // 当前表单 Provider ID 匹配的预设
   const currentPreset = useMemo(
     () => PROVIDER_PRESETS[formId.toLowerCase()],
     [formId],
   );
 
-  // Test state
   const [testingId, setTestingId] = useState<string | null>(null);
   const [testResults, setTestResults] = useState<Record<string, ProviderTestResult>>({});
 
-  // Delete confirmation
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [deleting, setDeleting] = useState(false);
   const [pendingDefaultProviderId, setPendingDefaultProviderId] = useState<string | null>(null);
@@ -184,7 +177,6 @@ export default function SettingsPage() {
     [pendingDefaultEmbeddingProviderId, providers],
   );
 
-  // Voice config state
   const [asrConfig, setAsrConfig] = useState<AsrConfig | null>(null);
   const [ttsConfig, setTtsConfig] = useState<TtsConfig | null>(null);
   const [showVoiceModal, setShowVoiceModal] = useState<'asr' | 'tts' | null>(null);
@@ -192,11 +184,9 @@ export default function SettingsPage() {
   const [asrTestResult, setAsrTestResult] = useState<ProviderTestResult | null>(null);
   const [voiceSaving, setVoiceSaving] = useState(false);
 
-  // ASR/TTS form fields
   const [asrForm, setAsrForm] = useState<AsrConfigRequest>({});
   const [ttsForm, setTtsForm] = useState<TtsConfigRequest>({});
 
-  // Toast notification
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
@@ -237,7 +227,6 @@ export default function SettingsPage() {
     loadData();
   }, [loadData]);
 
-  // --- Modal helpers ---
   const openCreateModal = () => {
     setEditingProvider(null);
     setFormId('');
@@ -270,14 +259,13 @@ export default function SettingsPage() {
     setEditingProvider(null);
   };
 
-  // --- CRUD handlers ---
   const handleCreate = async () => {
     if (!formId.trim() || !formBaseUrl.trim() || !formApiKey.trim() || !formModel.trim()) {
       showToast('请填写必填字段', 'error');
       return;
     }
     if (formSupportsEmbedding && !formEmbeddingModel.trim()) {
-      showToast('支持向量化时需要填写向量模型，例如 GLM 填 embedding-3', 'error');
+      showToast('支持向量化时需要填写向量模型，例如 GLM 的 embedding-3', 'error');
       return;
     }
     const embeddingDimensions = parseInt(formEmbeddingDimensions.trim(), 10);
@@ -321,7 +309,7 @@ export default function SettingsPage() {
       return;
     }
     if (formSupportsEmbedding && !formEmbeddingModel.trim()) {
-      showToast('支持向量化时需要填写向量模型，例如 GLM 填 embedding-3', 'error');
+      showToast('支持向量化时需要填写向量模型，例如 GLM 的 embedding-3', 'error');
       return;
     }
     const embeddingDimensions = parseInt(formEmbeddingDimensions.trim(), 10);
@@ -427,7 +415,7 @@ export default function SettingsPage() {
 
   const handleSetEmbeddingDefault = async (provider: ProviderItem) => {
     if (!provider.supportsEmbedding || !provider.embeddingModel) {
-      showToast('该 Provider 不支持 Embedding，不能作为知识库向量服务', 'error');
+      showToast('此 Provider 不支持 Embedding，不能作为知识库向量服务', 'error');
       return;
     }
     setPendingDefaultEmbeddingProviderId(provider.id);
@@ -443,7 +431,7 @@ export default function SettingsPage() {
         defaultProvider: defaultProviderId,
         defaultEmbeddingProvider: pendingDefaultEmbeddingProviderId,
       });
-      showToast(`已将 "${pendingDefaultEmbeddingProviderId}" 的 ${pendingEmbeddingProvider?.embeddingModel ?? '向量模型'} (${pendingEmbeddingProvider?.embeddingDimensions ?? 1024}维) 设为默认向量服务`);
+      showToast(`已将 "${pendingDefaultEmbeddingProviderId}" 的向量模型设为默认向量服务`);
       setPendingDefaultEmbeddingProviderId(null);
       await loadData();
     } catch (err) {
@@ -462,7 +450,6 @@ export default function SettingsPage() {
     }
   };
 
-  // --- Voice config handlers ---
   const openAsrModal = () => {
     if (!asrConfig) return;
     setAsrForm({
@@ -539,26 +526,23 @@ export default function SettingsPage() {
     }
   };
 
-  // --- Render ---
   return (
     <div className="max-w-4xl mx-auto">
-      {/* Page header */}
       <div className="mb-8">
         <div className="flex items-center gap-4 mb-2">
-          <div className="p-3 rounded-xl bg-gradient-to-r from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25">
-            <Settings className="w-6 h-6 text-white" />
+          <div className="p-3 rounded-xl bg-primary-container shadow-lg shadow-sm">
+            <Settings className="w-6 h-6 text-on-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white">系统设置</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-0.5 text-sm">管理聊天模型、向量模型和模块配置</p>
+            <h1 className="text-2xl font-bold text-on-surface">系统设置</h1>
+            <p className="text-on-surface-variant mt-0.5 text-sm">管理聊天模型、向量模型和模块配置</p>
           </div>
         </div>
       </div>
 
-      {/* Loading state */}
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+          <Loader2 className="w-8 h-8 text-primary-container animate-spin" />
         </div>
       ) : (
         <AnimatePresence mode="wait">
@@ -569,9 +553,8 @@ export default function SettingsPage() {
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.15 }}
           >
-              {/* Provider header */}
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white">
+                <h2 className="text-lg font-bold text-on-surface">
                   模型服务
                 </h2>
                 <motion.button
@@ -579,19 +562,18 @@ export default function SettingsPage() {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                   className="flex items-center gap-2 px-4 py-2.5 rounded-xl font-medium text-sm
-                    bg-gradient-to-r from-primary-500 to-primary-600 text-white shadow-lg shadow-primary-500/25
-                    hover:from-primary-600 hover:to-primary-700 transition-all"
+                    bg-primary-container text-on-primary shadow-lg shadow-sm
+                    hover:bg-primary-container transition-all"
                 >
                   <Plus className="w-4 h-4" />
                   新增 Provider
                 </motion.button>
               </div>
 
-              {/* Provider grid */}
               {providers.length === 0 ? (
-                <div className="text-center py-16 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700">
-                  <Server className="w-12 h-12 text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-                  <p className="text-slate-500 dark:text-slate-400 text-sm">暂无 Provider，点击上方按钮新增</p>
+                <div className="text-center py-16 bg-surface rounded-xl border border-outline-variant">
+                  <Server className="w-12 h-12 text-outline mx-auto mb-3" />
+                  <p className="text-on-surface-variant text-sm">暂无 Provider，点击上方按钮新增</p>
                 </div>
               ) : (
                 <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
@@ -608,17 +590,16 @@ export default function SettingsPage() {
                       transition={{ delay: index * 0.05 }}
                       className={CARD_CLASS}
                     >
-                      {/* Card header */}
                       <div className="mb-4 flex items-start justify-between gap-3">
                         <div className="flex min-w-0 items-center gap-3">
                           <div className={ICON_WRAP_CLASS}>
                             <Server className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                            <h3 className="truncate text-sm font-semibold text-on-surface">
                               {provider.id}
                             </h3>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">聊天/向量 Provider</p>
+                            <p className="mt-1 text-xs text-on-surface-variant">聊天/向量 Provider</p>
                           </div>
                         </div>
                         <div className="flex flex-col items-end gap-1">
@@ -631,7 +612,6 @@ export default function SettingsPage() {
                         </div>
                       </div>
 
-                      {/* Card details */}
                       <dl className={DETAILS_CLASS}>
                         <ConfigRow label="Base URL" value={provider.baseUrl} title={provider.baseUrl} emphasis />
                         <ConfigRow label="聊天模型" value={provider.model} title={provider.model} emphasis />
@@ -658,15 +638,14 @@ export default function SettingsPage() {
                         />
                       </dl>
 
-                      {/* Test result */}
                       {testResults[provider.id] && (
                         <motion.div
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           className={`mb-3 px-3 py-2 rounded-lg text-xs font-medium ${
                             testResults[provider.id].success
-                              ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                              : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                              ? 'bg-secondary-container/30 text-secondary'
+                              : 'bg-error-container/50 text-error'
                           }`}
                         >
                           <div className="flex items-center gap-1.5">
@@ -679,11 +658,10 @@ export default function SettingsPage() {
                         </motion.div>
                       )}
 
-                      {/* Card actions */}
                       <div className={ACTION_BAR_CLASS}>
                         <button
                           onClick={() => openEditModal(provider)}
-                          className={`${ACTION_BUTTON_CLASS} text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700`}
+                          className={`${ACTION_BUTTON_CLASS} text-on-surface-variant hover:bg-surface-container-high`}
                           title="编辑"
                         >
                           <Edit2 className="w-3.5 h-3.5" />
@@ -692,7 +670,7 @@ export default function SettingsPage() {
                         <button
                           onClick={() => handleTest(provider.id)}
                           disabled={testingId === provider.id}
-                          className={`${ACTION_BUTTON_CLASS} text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20`}
+                          className={`${ACTION_BUTTON_CLASS} text-secondary hover:bg-secondary-container/20`}
                           title="测试连接"
                         >
                           {testingId === provider.id
@@ -704,7 +682,7 @@ export default function SettingsPage() {
                         <button
                           onClick={() => handleSetDefault(provider.id)}
                           disabled={isGlobalDefault || settingDefault}
-                          className={`${ACTION_BUTTON_CLASS} text-primary-600 hover:bg-primary-50 dark:text-primary-400 dark:hover:bg-primary-900/20 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent`}
+                          className={`${ACTION_BUTTON_CLASS} text-primary-container hover:bg-primary-container/10 disabled:hover:bg-transparent`}
                           title="设为默认文字服务"
                         >
                           <Plug className="w-3.5 h-3.5" />
@@ -713,15 +691,15 @@ export default function SettingsPage() {
                         <button
                           onClick={() => handleSetEmbeddingDefault(provider)}
                           disabled={!canUseEmbedding || isEmbeddingDefault || settingEmbeddingDefault}
-                          className={`${ACTION_BUTTON_CLASS} text-emerald-600 hover:bg-emerald-50 dark:text-emerald-400 dark:hover:bg-emerald-900/20 disabled:hover:bg-transparent dark:disabled:hover:bg-transparent`}
-                          title={canUseEmbedding ? '设为默认向量服务' : '该 Provider 不支持 Embedding'}
+                          className={`${ACTION_BUTTON_CLASS} text-primary-container hover:bg-primary-container/10 disabled:hover:bg-transparent`}
+                          title={canUseEmbedding ? '设为默认向量服务' : '此 Provider 不支持 Embedding'}
                         >
                           <Database className="w-3.5 h-3.5" />
                           设为向量
                         </button>
                         <button
                           onClick={() => setDeleteConfirmId(provider.id)}
-                          className={`${ACTION_BUTTON_CLASS} ml-auto text-slate-400 hover:bg-red-50 hover:text-red-500 dark:text-slate-500 dark:hover:bg-red-900/20 dark:hover:text-red-300`}
+                          className={`${ACTION_BUTTON_CLASS} ml-auto text-outline hover:bg-error-container/30 hover:text-error`}
                           title="删除"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
@@ -733,13 +711,11 @@ export default function SettingsPage() {
                 </div>
               )}
 
-              {/* Voice service cards */}
               <div className="mt-6">
-                <h2 className="text-lg font-bold text-slate-800 dark:text-white mb-4">
+                <h2 className="text-lg font-bold text-on-surface mb-4">
                   语音服务
                 </h2>
                 <div className="grid grid-cols-1 items-stretch gap-4 md:grid-cols-2">
-                  {/* ASR Card */}
                   {asrConfig && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -752,10 +728,10 @@ export default function SettingsPage() {
                             <Mic className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                            <h3 className="truncate text-sm font-semibold text-on-surface">
                               ASR 语音识别
                             </h3>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">实时语音转写配置</p>
+                            <p className="mt-1 text-xs text-on-surface-variant">实时语音转写配置</p>
                           </div>
                         </div>
                         <StatusBadge icon={<Mic className="h-3 w-3" />}>语音服务</StatusBadge>
@@ -778,8 +754,8 @@ export default function SettingsPage() {
                       {asrTestResult && (
                         <div className={`mb-3 px-3 py-2 rounded-lg text-xs font-medium ${
                           asrTestResult.success
-                            ? 'bg-emerald-50 dark:bg-emerald-900/20 text-emerald-700 dark:text-emerald-300'
-                            : 'bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300'
+                            ? 'bg-secondary-container/30 text-secondary'
+                            : 'bg-error-container/50 text-error'
                         }`}>
                           <div className="flex items-center gap-1.5">
                             {asrTestResult.success
@@ -794,7 +770,7 @@ export default function SettingsPage() {
                       <div className={ACTION_BAR_CLASS}>
                         <button
                           onClick={openAsrModal}
-                          className={`${ACTION_BUTTON_CLASS} text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700`}
+                          className={`${ACTION_BUTTON_CLASS} text-on-surface-variant hover:bg-surface-container-high`}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           编辑
@@ -802,7 +778,7 @@ export default function SettingsPage() {
                         <button
                           onClick={handleTestAsr}
                           disabled={testingAsr}
-                          className={`${ACTION_BUTTON_CLASS} text-blue-600 hover:bg-blue-50 dark:text-blue-400 dark:hover:bg-blue-900/20`}
+                          className={`${ACTION_BUTTON_CLASS} text-secondary hover:bg-secondary-container/20`}
                         >
                           {testingAsr
                             ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
@@ -814,7 +790,6 @@ export default function SettingsPage() {
                     </motion.div>
                   )}
 
-                  {/* TTS Card */}
                   {ttsConfig && (
                     <motion.div
                       initial={{ opacity: 0, y: 10 }}
@@ -828,10 +803,10 @@ export default function SettingsPage() {
                             <Volume2 className="h-4 w-4" />
                           </div>
                           <div className="min-w-0">
-                            <h3 className="truncate text-sm font-semibold text-slate-800 dark:text-white">
+                            <h3 className="truncate text-sm font-semibold text-on-surface">
                               TTS 语音合成
                             </h3>
-                            <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">文本转语音输出配置</p>
+                            <p className="mt-1 text-xs text-on-surface-variant">文本转语音输出配置</p>
                           </div>
                         </div>
                         <StatusBadge icon={<Volume2 className="h-3 w-3" />}>语音服务</StatusBadge>
@@ -854,7 +829,7 @@ export default function SettingsPage() {
                       <div className={ACTION_BAR_CLASS}>
                         <button
                           onClick={openTtsModal}
-                          className={`${ACTION_BUTTON_CLASS} text-slate-600 hover:bg-slate-100 dark:text-slate-300 dark:hover:bg-slate-700`}
+                          className={`${ACTION_BUTTON_CLASS} text-on-surface-variant hover:bg-surface-container-high`}
                         >
                           <Edit2 className="w-3.5 h-3.5" />
                           编辑
@@ -868,7 +843,6 @@ export default function SettingsPage() {
         </AnimatePresence>
       )}
 
-      {/* Create / Edit Modal */}
       <AnimatePresence>
         {showModal && (
           <>
@@ -885,16 +859,15 @@ export default function SettingsPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6"
+                className="bg-surface rounded-xl shadow-lg max-w-lg w-full p-6"
               >
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-xl font-bold text-on-surface mb-5">
                   {editingProvider ? '编辑 Provider' : '新增 Provider'}
                 </h3>
 
                 <div className="space-y-4">
-                  {/* Provider ID */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
                       Provider ID <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -903,7 +876,6 @@ export default function SettingsPage() {
                       onChange={(e) => {
                         const newId = e.target.value;
                         setFormId(newId);
-                        // 新建时自动填充已知 Provider 的 Base URL
                         if (!editingProvider) {
                           const preset = PROVIDER_PRESETS[newId.toLowerCase()];
                           if (preset) {
@@ -916,17 +888,14 @@ export default function SettingsPage() {
                       }}
                       disabled={!!editingProvider}
                       placeholder="例如: dashscope, deepseek, glm, kimi"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                        bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                        placeholder:text-slate-400 focus:outline-none focus:ring-2
-                        focus:ring-primary-500/50 focus:border-primary-400 transition-shadow
+                      className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                        bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors
                         disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
 
-                  {/* Base URL */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
                       Base URL <span className="text-red-500">*</span>
                     </label>
                     <input
@@ -934,19 +903,16 @@ export default function SettingsPage() {
                       value={formBaseUrl}
                       onChange={(e) => setFormBaseUrl(e.target.value)}
                       placeholder="例如: https://api.openai.com/v1"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                        bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                        placeholder:text-slate-400 focus:outline-none focus:ring-2
-                        focus:ring-primary-500/50 focus:border-primary-400 transition-shadow"
+                      className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                        bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors"
                     />
                   </div>
 
-                  {/* API Key */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
                       API Key{' '}
                       {editingProvider && (
-                        <span className="text-slate-400 font-normal">(留空则不修改)</span>
+                        <span className="text-outline font-normal">(留空则不修改)</span>
                       )}
                       {!editingProvider && <span className="text-red-500">*</span>}
                     </label>
@@ -956,25 +922,22 @@ export default function SettingsPage() {
                         value={formApiKey}
                         onChange={(e) => setFormApiKey(e.target.value)}
                         placeholder={editingProvider ? '留空则保持原值' : '输入 API Key'}
-                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-slate-200 dark:border-slate-600
-                          bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                          placeholder:text-slate-400 focus:outline-none focus:ring-2
-                          focus:ring-primary-500/50 focus:border-primary-400 transition-shadow"
+                        className="w-full px-4 py-2.5 pr-10 rounded-xl border border-outline-variant
+                          bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors"
                       />
                       <button
                         type="button"
                         onClick={() => setShowApiKey(!showApiKey)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
-                          hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-outline
+                          hover:text-on-surface-variant transition-colors"
                       >
                         {showApiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
                   </div>
 
-                  {/* Chat Model */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
                       聊天模型 <span className="text-red-500">*</span>
                     </label>
                     <div className="relative">
@@ -987,25 +950,23 @@ export default function SettingsPage() {
                         }}
                         onFocus={() => currentPreset && setShowModelDropdown(true)}
                         onBlur={() => setTimeout(() => setShowModelDropdown(false), 150)}
-                        placeholder={currentPreset ? '从下拉列表选择或输入自定义聊天模型名' : '例如: qwen3.5-flash, deepseek-v4-flash, glm-5'}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                          bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                          placeholder:text-slate-400 focus:outline-none focus:ring-2
-                          focus:ring-primary-500/50 focus:border-primary-400 transition-shadow"
+                        placeholder={currentPreset ? '从下拉列表选择或输入自定义聊天模型' : '例如: qwen3.5-flash, deepseek-v4-flash, glm-5'}
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                          bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors"
                       />
                       {currentPreset && (
                         <button
                           type="button"
                           onClick={() => setShowModelDropdown(!showModelDropdown)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
-                            hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-outline
+                            hover:text-on-surface-variant transition-colors"
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
                       )}
                       {showModelDropdown && currentPreset && (
-                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-700
-                          border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg
+                        <div className="absolute z-10 mt-1 w-full bg-surface-container-lowest
+                          border border-outline-variant rounded-xl shadow-lg
                           max-h-60 overflow-auto">
                           {currentPreset.models.map((m) => (
                             <button
@@ -1015,14 +976,14 @@ export default function SettingsPage() {
                                 setFormModel(m.value);
                                 setShowModelDropdown(false);
                               }}
-                              className={`w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50
-                                dark:hover:bg-slate-600 transition-colors flex justify-between items-center
+                              className={`w-full px-4 py-2.5 text-left text-sm hover:bg-primary-container/10
+                                transition-colors flex justify-between items-center
                                 ${formModel === m.value
-                                  ? 'text-primary-600 dark:text-primary-400 font-medium bg-primary-50 dark:bg-slate-600'
-                                  : 'text-slate-700 dark:text-slate-200'}`}
+                                  ? 'text-primary-container font-medium bg-primary-container/10'
+                                  : 'text-on-surface'}`}
                             >
                               <span className="font-mono">{m.value}</span>
-                              <span className="text-xs text-slate-400 dark:text-slate-500 ml-2 whitespace-nowrap">{m.label}</span>
+                              <span className="text-xs text-outline ml-2 whitespace-nowrap">{m.label}</span>
                             </button>
                           ))}
                         </div>
@@ -1030,13 +991,12 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Embedding Model */}
                   <div>
                     <div className="mb-1.5 flex items-center justify-between gap-3">
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300">
-                        向量模型 <span className="text-slate-400 font-normal">(知识库向量化，例如 GLM 填 embedding-3)</span>
+                      <label className="block text-sm font-medium text-on-surface-variant">
+                        向量模型 <span className="text-outline font-normal">(知识库向量化，例如 GLM 的 embedding-3)</span>
                       </label>
-                      <label className="inline-flex items-center gap-2 text-xs font-medium text-slate-600 dark:text-slate-300">
+                      <label className="inline-flex items-center gap-2 text-xs font-medium text-on-surface-variant">
                         <input
                           type="checkbox"
                           checked={formSupportsEmbedding}
@@ -1047,7 +1007,7 @@ export default function SettingsPage() {
                               setFormEmbeddingDimensions('1024');
                             }
                           }}
-                          className="h-4 w-4 rounded border-slate-300 text-primary-600 focus:ring-primary-500"
+                          className="h-4 w-4 rounded border-outline-variant text-primary-container focus:outline-none"
                         />
                         支持 Embedding
                       </label>
@@ -1064,27 +1024,26 @@ export default function SettingsPage() {
                         onBlur={() => setTimeout(() => setShowEmbeddingDropdown(false), 150)}
                         disabled={!formSupportsEmbedding}
                         placeholder={formSupportsEmbedding
-                          ? (currentPreset?.embeddingModels ? '从下拉列表选择或输入自定义向量模型名' : '例如: text-embedding-v3, embedding-3')
+                          ? (currentPreset?.embeddingModels ? '从下拉列表选择或输入自定义向量模型' : '例如: text-embedding-v3, embedding-3')
                           : 'DeepSeek / Kimi 等 Provider 通常不支持 Embedding'}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                          bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                          placeholder:text-slate-400 focus:outline-none focus:ring-2
-                          focus:ring-primary-500/50 focus:border-primary-400 transition-shadow
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                          bg-surface-container-lowest text-sm text-on-surface
+                          placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors
                           disabled:cursor-not-allowed disabled:opacity-60"
                       />
                       {formSupportsEmbedding && currentPreset?.embeddingModels && (
                         <button
                           type="button"
                           onClick={() => setShowEmbeddingDropdown(!showEmbeddingDropdown)}
-                          className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400
-                            hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-outline
+                            hover:text-on-surface-variant transition-colors"
                         >
                           <ChevronDown className="w-4 h-4" />
                         </button>
                       )}
                       {formSupportsEmbedding && showEmbeddingDropdown && currentPreset?.embeddingModels && (
-                        <div className="absolute z-10 mt-1 w-full bg-white dark:bg-slate-700
-                          border border-slate-200 dark:border-slate-600 rounded-xl shadow-lg
+                        <div className="absolute z-10 mt-1 w-full bg-surface-container-lowest
+                          border border-outline-variant rounded-xl shadow-lg
                           max-h-60 overflow-auto">
                           {currentPreset.embeddingModels.map((m) => (
                             <button
@@ -1094,14 +1053,14 @@ export default function SettingsPage() {
                                 setFormEmbeddingModel(m.value);
                                 setShowEmbeddingDropdown(false);
                               }}
-                              className={`w-full px-4 py-2.5 text-left text-sm hover:bg-primary-50
-                                dark:hover:bg-slate-600 transition-colors flex justify-between items-center
+                              className={`w-full px-4 py-2.5 text-left text-sm hover:bg-primary-container/10
+                                transition-colors flex justify-between items-center
                                 ${formEmbeddingModel === m.value
-                                  ? 'text-primary-600 dark:text-primary-400 font-medium bg-primary-50 dark:bg-slate-600'
-                                  : 'text-slate-700 dark:text-slate-200'}`}
+                                  ? 'text-primary-container font-medium bg-primary-container/10'
+                                  : 'text-on-surface'}`}
                             >
                               <span className="font-mono">{m.value}</span>
-                              <span className="text-xs text-slate-400 dark:text-slate-500 ml-2 whitespace-nowrap">{m.label}</span>
+                              <span className="text-xs text-outline ml-2 whitespace-nowrap">{m.label}</span>
                             </button>
                           ))}
                         </div>
@@ -1111,8 +1070,8 @@ export default function SettingsPage() {
 
                   {formSupportsEmbedding && (
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                        向量维度 <span className="text-slate-400 font-normal">(必须与 pgvector 表一致，当前为 1024)</span>
+                      <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
+                        向量维度 <span className="text-outline font-normal">(必须与 pgvector 表一致，当前为 1024)</span>
                       </label>
                       <input
                         type="number"
@@ -1120,41 +1079,32 @@ export default function SettingsPage() {
                         value={formEmbeddingDimensions}
                         onChange={(e) => setFormEmbeddingDimensions(e.target.value)}
                         placeholder="1024"
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                          bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                          placeholder:text-slate-400 focus:outline-none focus:ring-2
-                          focus:ring-primary-500/50 focus:border-primary-400 transition-shadow"
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                          bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors"
                       />
                     </div>
                   )}
 
-                  {/* Temperature */}
                   <div>
-                    <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">
-                      Temperature <span className="text-slate-400 font-normal">(可选, 默认 0.2)</span>
+                    <label className="block text-sm font-medium text-on-surface-variant mb-1.5">
+                      Temperature <span className="text-outline font-normal">(可选，默认 0.2)</span>
                     </label>
                     <input
                       type="text"
                       value={formTemperature}
                       onChange={(e) => setFormTemperature(e.target.value)}
                       placeholder="例如: 0.2, 0.7, 1"
-                      className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600
-                        bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white
-                        placeholder:text-slate-400 focus:outline-none focus:ring-2
-                        focus:ring-primary-500/50 focus:border-primary-400 transition-shadow"
+                      className="w-full px-4 py-2.5 rounded-xl border border-outline-variant
+                        bg-surface-container-lowest text-sm text-on-surface placeholder:text-outline focus:outline-none focus:border-primary-container transition-colors"
                     />
                   </div>
                 </div>
 
-                {/* Modal actions */}
                 <div className="flex gap-3 justify-end mt-6">
                   <motion.button
                     onClick={closeModal}
                     disabled={saving}
-                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-600
-                      text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm
-                      hover:bg-slate-50 dark:hover:bg-slate-700 transition-all
-                      disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary px-5 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1163,11 +1113,7 @@ export default function SettingsPage() {
                   <motion.button
                     onClick={handleSaveModal}
                     disabled={saving}
-                    className="px-5 py-2.5 text-white rounded-xl font-semibold text-sm
-                      bg-gradient-to-r from-primary-500 to-primary-600
-                      shadow-lg shadow-primary-500/25
-                      hover:from-primary-600 hover:to-primary-700
-                      transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1187,7 +1133,6 @@ export default function SettingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Voice Edit Modal */}
       <AnimatePresence>
         {showVoiceModal && (
           <>
@@ -1204,152 +1149,151 @@ export default function SettingsPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto"
+                className="bg-surface rounded-xl shadow-lg max-w-lg w-full p-6 max-h-[85vh] overflow-y-auto"
               >
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-5">
+                <h3 className="text-xl font-bold text-on-surface mb-5">
                   {showVoiceModal === 'asr' ? '编辑 ASR 语音识别' : '编辑 TTS 语音合成'}
                 </h3>
 
                 {showVoiceModal === 'asr' ? (
                   <div className="space-y-4">
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">连接配置</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">连接配置</p>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">WebSocket URL</label>
+                      <label className="block text-sm font-medium text-on-surface-variant mb-1.5">WebSocket URL</label>
                       <input type="text" value={asrForm.url || ''} onChange={(e) => setAsrForm(f => ({ ...f, url: e.target.value }))}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Model</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Model</label>
                         <input type="text" value={asrForm.model || ''} onChange={(e) => setAsrForm(f => ({ ...f, model: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">API Key <span className="text-slate-400 font-normal">(留空不改)</span></label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">API Key <span className="text-outline font-normal">(留空不改)</span></label>
                         <input type="password" value={asrForm.apiKey || ''} onChange={(e) => setAsrForm(f => ({ ...f, apiKey: e.target.value }))}
                           placeholder="留空则保持原值"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Language</label>
+                      <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Language</label>
                       <input type="text" value={asrForm.language || ''} onChange={(e) => setAsrForm(f => ({ ...f, language: e.target.value }))}
-                        className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                        className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">音频参数</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider pt-2">音频参数</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Format</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Format</label>
                         <input type="text" value={asrForm.format || ''} onChange={(e) => setAsrForm(f => ({ ...f, format: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Sample Rate</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Sample Rate</label>
                         <input type="number" value={asrForm.sampleRate || 0} onChange={(e) => setAsrForm(f => ({ ...f, sampleRate: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">VAD 参数</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider pt-2">VAD 参数</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Turn Detection</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Turn Detection</label>
                         <select value={asrForm.enableTurnDetection ? 'true' : 'false'} onChange={(e) => setAsrForm(f => ({ ...f, enableTurnDetection: e.target.value === 'true' }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow">
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors">
                           <option value="true">Enabled</option>
                           <option value="false">Disabled</option>
                         </select>
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Detection Type</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Detection Type</label>
                         <input type="text" value={asrForm.turnDetectionType || ''} onChange={(e) => setAsrForm(f => ({ ...f, turnDetectionType: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Threshold</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Threshold</label>
                         <input type="number" step="0.1" value={asrForm.turnDetectionThreshold || 0} onChange={(e) => setAsrForm(f => ({ ...f, turnDetectionThreshold: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Silence Duration (ms)</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Silence Duration (ms)</label>
                         <input type="number" value={asrForm.turnDetectionSilenceDurationMs || 0} onChange={(e) => setAsrForm(f => ({ ...f, turnDetectionSilenceDurationMs: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
                   </div>
                 ) : (
                   <div className="space-y-4">
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">连接配置</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider">连接配置</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Model</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Model</label>
                         <input type="text" value={ttsForm.model || ''} onChange={(e) => setTtsForm(f => ({ ...f, model: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">API Key <span className="text-slate-400 font-normal">(留空不改)</span></label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">API Key <span className="text-outline font-normal">(留空不改)</span></label>
                         <input type="password" value={ttsForm.apiKey || ''} onChange={(e) => setTtsForm(f => ({ ...f, apiKey: e.target.value }))}
                           placeholder="留空则保持原值"
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">语音参数</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider pt-2">语音参数</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Voice</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Voice</label>
                         <input type="text" value={ttsForm.voice || ''} onChange={(e) => setTtsForm(f => ({ ...f, voice: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Format</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Format</label>
                         <input type="text" value={ttsForm.format || ''} onChange={(e) => setTtsForm(f => ({ ...f, format: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
                     <div className="grid grid-cols-3 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Sample Rate</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Sample Rate</label>
                         <input type="number" value={ttsForm.sampleRate || 0} onChange={(e) => setTtsForm(f => ({ ...f, sampleRate: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Mode</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Mode</label>
                         <input type="text" value={ttsForm.mode || ''} onChange={(e) => setTtsForm(f => ({ ...f, mode: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Language</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Language</label>
                         <input type="text" value={ttsForm.languageType || ''} onChange={(e) => setTtsForm(f => ({ ...f, languageType: e.target.value }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
 
-                    <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider pt-2">输出控制</p>
+                    <p className="text-xs font-semibold text-on-surface-variant uppercase tracking-wider pt-2">输出控制</p>
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Speech Rate</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Speech Rate</label>
                         <input type="number" step="0.1" value={ttsForm.speechRate || 0} onChange={(e) => setTtsForm(f => ({ ...f, speechRate: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                       <div>
-                        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Volume</label>
+                        <label className="block text-sm font-medium text-on-surface-variant mb-1.5">Volume</label>
                         <input type="number" value={ttsForm.volume || 0} onChange={(e) => setTtsForm(f => ({ ...f, volume: Number(e.target.value) }))}
-                          className="w-full px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 text-sm text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-primary-500/50 focus:border-primary-400 transition-shadow" />
+                          className="w-full px-4 py-2.5 rounded-xl border border-outline-variant bg-surface-container-lowest text-sm text-on-surface focus:outline-none focus:border-primary-container transition-colors" />
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Modal actions */}
                 <div className="flex gap-3 justify-end mt-6">
                   <motion.button
                     onClick={() => setShowVoiceModal(null)}
                     disabled={voiceSaving}
-                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm hover:bg-slate-50 dark:hover:bg-slate-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary px-5 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1358,7 +1302,7 @@ export default function SettingsPage() {
                   <motion.button
                     onClick={showVoiceModal === 'asr' ? handleSaveAsr : handleSaveTts}
                     disabled={voiceSaving}
-                    className="px-5 py-2.5 text-white rounded-xl font-semibold text-sm bg-gradient-to-r from-primary-500 to-primary-600 shadow-lg shadow-primary-500/25 hover:from-primary-600 hover:to-primary-700 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-primary px-5 py-2.5 rounded-xl font-semibold text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1396,7 +1340,7 @@ export default function SettingsPage() {
       <ConfirmDialog
         open={pendingDefaultEmbeddingProviderId !== null}
         title="设为默认向量服务"
-        message={`确定要将 "${pendingDefaultEmbeddingProviderId ?? ''}" 的向量模型 "${pendingEmbeddingProvider?.embeddingModel ?? ''}"（${pendingEmbeddingProvider?.embeddingDimensions ?? 1024}维）设为知识库默认向量服务吗？后续上传和重新向量化会使用这个向量模型，不会使用聊天模型。`}
+        message={`确定要将 "${pendingDefaultEmbeddingProviderId ?? ''}" 的向量模型设为知识库默认向量服务吗？后续上传和重新向量化会使用这个向量模型。`}
         confirmText="确认设置"
         cancelText="取消"
         loading={settingEmbeddingDefault}
@@ -1408,7 +1352,6 @@ export default function SettingsPage() {
         }}
       />
 
-      {/* Delete confirmation dialog */}
       <AnimatePresence>
         {deleteConfirmId && (
           <>
@@ -1425,23 +1368,20 @@ export default function SettingsPage() {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6"
+                className="bg-surface rounded-xl shadow-lg max-w-md w-full p-6"
               >
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">
+                <h3 className="text-xl font-bold text-on-surface mb-4">
                   删除 Provider
                 </h3>
-                <p className="text-slate-600 dark:text-slate-300 mb-6">
-                  确定要删除 Provider &ldquo;{deleteConfirmId}&rdquo; 吗？删除后无法恢复。
+                <p className="text-on-surface-variant mb-6">
+                  确定要删除 Provider "{deleteConfirmId}" 吗？删除后无法恢复！
                   如果有模块正在使用此 Provider，请先切换到其他 Provider。
                 </p>
                 <div className="flex gap-3 justify-end">
                   <motion.button
                     onClick={() => setDeleteConfirmId(null)}
                     disabled={deleting}
-                    className="px-5 py-2.5 border border-slate-200 dark:border-slate-600
-                      text-slate-600 dark:text-slate-300 rounded-xl font-medium text-sm
-                      hover:bg-slate-50 dark:hover:bg-slate-700 transition-all
-                      disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="btn-secondary px-5 py-2.5 rounded-xl font-medium text-sm transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1450,10 +1390,7 @@ export default function SettingsPage() {
                   <motion.button
                     onClick={handleDelete}
                     disabled={deleting}
-                    className="px-5 py-2.5 text-white rounded-xl font-semibold text-sm
-                      bg-gradient-to-r from-red-500 to-red-600
-                      hover:from-red-600 hover:to-red-700
-                      transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="px-5 py-2.5 rounded-xl font-semibold text-sm bg-error text-on-error hover:opacity-90 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -1473,7 +1410,6 @@ export default function SettingsPage() {
         )}
       </AnimatePresence>
 
-      {/* Toast notification */}
       <AnimatePresence>
         {toast && (
           <motion.div
@@ -1483,8 +1419,8 @@ export default function SettingsPage() {
             className={`fixed bottom-6 left-1/2 px-5 py-3 rounded-xl shadow-lg text-sm font-medium
               flex items-center gap-2 z-[60] ${
                 toast.type === 'success'
-                  ? 'bg-emerald-600 text-white'
-                  : 'bg-red-600 text-white'
+                  ? 'bg-secondary text-on-secondary'
+                  : 'bg-error text-on-error'
               }`}
           >
             {toast.type === 'success'

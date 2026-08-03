@@ -8,6 +8,7 @@ logging:
 
 server:
   port: 8080
+  address: 0.0.0.0
   # 明确指定HTTP响应编码
   servlet:
     encoding:
@@ -24,6 +25,13 @@ springdoc:
   api-docs:
     path: /v3/api-docs
   packages-to-scan: interview.guide.modules
+
+# Scrapling HTTP 服务配置
+careerfair:
+  scrapling:
+    api-url: ${SCRAPLING_API_URL:http://127.0.0.1:5000}
+    timeout: 60000
+    max-retries: 3
 
 spring:
   config:

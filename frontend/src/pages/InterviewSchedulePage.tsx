@@ -148,7 +148,7 @@ export const InterviewSchedulePage: React.FC = () => {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <div className="w-10 h-10 border-3 border-slate-200 border-t-primary-500 rounded-full animate-spin" />
+        <div className="w-10 h-10 border-3 border-outline-variant border-t-primary-container rounded-full animate-spin" />
       </div>
     );
   }

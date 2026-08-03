@@ -1,0 +1,5 @@
+# Scrapling HTTP 服务依赖
+flask>=3.0.0
+scrapling>=0.4.8
+playwright>=1.49.0
+gunicorn>=21.0.0

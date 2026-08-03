@@ -5,6 +5,8 @@ import {
   Check,
   CheckCircle,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   Clock,
   Database,
   Download,
@@ -28,7 +30,6 @@ interface KnowledgeBaseManagePageProps {
   onChat: () => void;
 }
 
-// 格式化文件大小
 function formatFileSize(bytes: number): string {
   if (bytes === 0) return '0 B';
   const k = 1024;
@@ -37,79 +38,63 @@ function formatFileSize(bytes: number): string {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
 }
 
-// 格式化日期
 function formatDate(dateStr: string): string {
   const date = new Date(dateStr);
   return date.toLocaleDateString('zh-CN', {
     year: 'numeric',
     month: '2-digit',
     day: '2-digit',
-    hour: '2-digit',
-    minute: '2-digit',
   });
 }
 
-// 状态图标组件
-function StatusIcon({ status }: { status: VectorStatus }) {
-  switch (status) {
-    case 'COMPLETED':
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
-    case 'PROCESSING':
-      return <Loader2 className="w-4 h-4 text-blue-500 animate-spin" />;
-    case 'PENDING':
-      return <Clock className="w-4 h-4 text-yellow-500" />;
-    case 'FAILED':
-      return <AlertCircle className="w-4 h-4 text-red-500" />;
-    default:
-      return <CheckCircle className="w-4 h-4 text-green-500" />;
+function getFileIconAndColor(filename: string) {
+  const ext = filename.split('.').pop()?.toLowerCase() || '';
+  if (ext === 'pdf') {
+    return { icon: 'picture_as_pdf', bgClass: 'bg-error-container', textClass: 'text-on-error-container' };
   }
+  if (['doc', 'docx'].includes(ext)) {
+    return { icon: 'description', bgClass: 'bg-surface-container-high', textClass: 'text-primary' };
+  }
+  if (['txt', 'md'].includes(ext)) {
+    return { icon: 'article', bgClass: 'bg-tertiary-fixed-dim/30', textClass: 'text-on-tertiary-container' };
+  }
+  return { icon: 'description', bgClass: 'bg-surface-container-high', textClass: 'text-primary' };
 }
 
-// 状态文本
-function getStatusText(status: VectorStatus): string {
+function StatusBadge({ status }: { status: VectorStatus }) {
   switch (status) {
     case 'COMPLETED':
-      return '已完成';
+      return (
+        <span className="status-badge status-success">
+          已解析
+        </span>
+      );
     case 'PROCESSING':
-      return '处理中';
+      return (
+        <span className="status-badge status-processing">
+          <span className="w-1.5 h-1.5 rounded-full bg-outline animate-pulse mr-1.5" />
+          解析中
+        </span>
+      );
     case 'PENDING':
-      return '待处理';
+      return (
+        <span className="status-badge status-processing">
+          待处理
+        </span>
+      );
     case 'FAILED':
-      return '失败';
+      return (
+        <span className="status-badge status-error">
+          解析失败
+        </span>
+      );
     default:
-      return '未知';
+      return (
+        <span className="status-badge status-success">
+          已解析
+        </span>
+      );
   }
-}
-
-// 统计卡片组件
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ComponentType<{ className?: string }>;
-  label: string;
-  value: number;
-  color: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-slate-800 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-700"
-    >
-      <div className="flex items-center gap-4">
-        <div className={`p-3 rounded-lg ${color}`}>
-          <Icon className="w-6 h-6 text-white" />
-        </div>
-        <div>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{label}</p>
-            <p className="text-2xl font-bold text-slate-800 dark:text-white">{value.toLocaleString()}</p>
-        </div>
-      </div>
-    </motion.div>
-  );
 }
 
 export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeBaseManagePageProps) {
@@ -123,16 +108,13 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
   const [deleteItem, setDeleteItem] = useState<KnowledgeBaseItem | null>(null);
   const [deleting, setDeleting] = useState(false);
 
-  // 分类编辑状态
   const [editingCategoryId, setEditingCategoryId] = useState<number | null>(null);
   const [editingCategoryValue, setEditingCategoryValue] = useState('');
   const [savingCategory, setSavingCategory] = useState(false);
   const categoryInputRef = useRef<HTMLInputElement>(null);
 
-  // 重新向量化状态
   const [revectorizing, setRevectorizing] = useState<number | null>(null);
 
-  // 加载数据（不显示loading状态，用于轮询）
   const loadDataSilent = useCallback(async () => {
     try {
       const [statsData, kbList, categoryList] = await Promise.all([
@@ -152,7 +134,6 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   }, [searchKeyword, sortBy, selectedCategory]);
 
-  // 加载数据
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
@@ -179,7 +160,6 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     loadData();
   }, [loadData]);
 
-  // 轮询：当有 PENDING 或 PROCESSING 状态时，每5秒刷新一次
   useEffect(() => {
     const hasPendingItems = knowledgeBases.some(
       kb => kb.vectorStatus === 'PENDING' || kb.vectorStatus === 'PROCESSING'
@@ -194,7 +174,6 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   }, [knowledgeBases, loading, loadDataSilent]);
 
-  // 重新向量化
   const handleRevectorize = async (id: number) => {
     try {
       setRevectorizing(id);
@@ -207,7 +186,6 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   };
 
-  // 删除知识库
   const handleDelete = async () => {
     if (!deleteItem) return;
     try {
@@ -222,24 +200,22 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   };
 
-  // 下载知识库
-    const handleDownload = async (kb: KnowledgeBaseItem) => {
-        try {
-            const blob = await knowledgeBaseApi.downloadKnowledgeBase(kb.id);
-            const url = window.URL.createObjectURL(blob);
-            const link = document.createElement('a');
-            link.href = url;
-            link.download = kb.originalFilename;
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-            window.URL.revokeObjectURL(url);
-        } catch (error) {
-            console.error('下载失败:', error);
-        }
+  const handleDownload = async (kb: KnowledgeBaseItem) => {
+    try {
+      const blob = await knowledgeBaseApi.downloadKnowledgeBase(kb.id);
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = kb.originalFilename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('下载失败:', error);
+    }
   };
 
-  // 开始编辑分类
   const handleStartEditCategory = (kb: KnowledgeBaseItem) => {
     setEditingCategoryId(kb.id);
     setEditingCategoryValue(kb.category || '');
@@ -248,13 +224,11 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }, 50);
   };
 
-  // 取消编辑分类
   const handleCancelEditCategory = () => {
     setEditingCategoryId(null);
     setEditingCategoryValue('');
   };
 
-  // 保存分类
   const handleSaveCategory = async (id: number) => {
     try {
       setSavingCategory(true);
@@ -270,7 +244,6 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   };
 
-  // 处理分类输入框按键
   const handleCategoryKeyDown = (e: React.KeyboardEvent, id: number) => {
     if (e.key === 'Enter') {
       e.preventDefault();
@@ -280,316 +253,282 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
     }
   };
 
-  // 搜索处理
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
     loadData();
   };
 
   return (
-    <div className="max-w-7xl mx-auto">
-      {/* 页面标题 */}
-      <div className="flex items-center justify-between mb-8">
-        <div>
-            <h1 className="text-2xl font-bold text-slate-800 dark:text-white flex items-center gap-3">
-            <Database className="w-7 h-7 text-primary-500" />
-            知识库管理
-          </h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">管理您的知识库文件，查看使用统计</p>
+    <div className="flex flex-col flex-1">
+      {/* TopAppBar Contextual Header */}
+      <header className="w-full flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-xl bg-surface text-primary flex items-center justify-center shadow-sm">
+            <Database className="w-[28px] h-[28px]" />
+          </div>
+          <div>
+            <h2 className="font-headline-md text-headline-md text-on-surface">知识库管理</h2>
+            <p className="font-body-md text-on-surface-variant mt-1">管理您的知识库文件，查看使用统计</p>
+          </div>
         </div>
-        <div className="flex gap-3">
-          <button
-            onClick={onUpload}
-            className="flex items-center gap-2 px-4 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600 transition-colors"
-          >
-            <Upload className="w-4 h-4" />
-            上传知识库
-          </button>
+        <div className="flex items-center gap-3">
           <button
             onClick={onChat}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+            className="btn-secondary flex items-center gap-2"
           >
-            <MessageSquare className="w-4 h-4" />
+            <MessageSquare className="w-[20px] h-[20px]" />
             问答助手
           </button>
+          <button
+            onClick={onUpload}
+            className="btn-primary flex items-center gap-2"
+          >
+            <Upload className="w-[20px] h-[20px]" />
+            上传知识库
+          </button>
         </div>
-      </div>
-      {/* 统计卡片 */}
-      {stats && (
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-          <StatCard
-            icon={Database}
-            label="知识库总数"
-            value={stats.totalCount}
-            color="bg-primary-500"
-          />
-          <StatCard
-            icon={MessageSquare}
-            label="总提问次数"
-            value={stats.totalQuestionCount}
-            color="bg-indigo-500"
-          />
-          <StatCard
-            icon={Eye}
-            label="总访问次数"
-            value={stats.totalAccessCount}
-            color="bg-emerald-500"
-          />
-        </div>
-      )}
+      </header>
 
-      {/* 搜索和筛选栏 */}
-        <div
-            className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700 mb-6">
-        <div className="flex flex-wrap items-center gap-4">
-          {/* 搜索框 */}
-          <form onSubmit={handleSearch} className="flex-1 min-w-[200px]">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
-              <input
-                type="text"
-                value={searchKeyword}
-                onChange={(e) => setSearchKeyword(e.target.value)}
-                placeholder="搜索知识库名称..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-              />
-            </div>
+      {/* Content Canvas */}
+      <div className="flex-1 flex flex-col">
+        {/* Tools Bar */}
+        <div className="flex flex-col lg:flex-row gap-4 mb-6 p-4 bg-surface rounded-xl shadow-sm">
+          {/* Search */}
+          <form onSubmit={handleSearch} className="flex-1 relative search-focus rounded-full transition-all duration-200">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-outline" />
+            <input
+              type="text"
+              value={searchKeyword}
+              onChange={(e) => setSearchKeyword(e.target.value)}
+              placeholder="搜索知识库名称..."
+              className="w-full h-11 pl-11 pr-4 bg-transparent border border-outline-variant rounded-full text-body-md text-on-surface placeholder:text-outline focus:outline-none focus:ring-0"
+            />
           </form>
 
-          {/* 排序选择 */}
-          <div className="relative">
-            <select
-              value={sortBy}
-              onChange={(e) => {
-                setSortBy(e.target.value as SortOption);
-                setSearchKeyword('');
-                setSelectedCategory(null);
-              }}
-              className="appearance-none pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white cursor-pointer"
-            >
-              <option value="time">按时间排序</option>
-              <option value="size">按大小排序</option>
-              <option value="access">按访问排序</option>
-              <option value="question">按提问排序</option>
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
-          </div>
-
-          {/* 分类筛选 */}
-          <div className="relative">
-            <select
-              value={selectedCategory || ''}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value || null);
-                setSearchKeyword('');
-              }}
-              className="appearance-none pl-4 pr-10 py-2 border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white cursor-pointer"
-            >
-              <option value="">全部分类</option>
-              {categories.map((cat) => (
-                <option key={cat} value={cat}>
-                  {cat}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          {/* Filters */}
+          <div className="flex gap-3">
+            <div className="relative">
+              <select
+                value={sortBy}
+                onChange={(e) => {
+                  setSortBy(e.target.value as SortOption);
+                  setSearchKeyword('');
+                  setSelectedCategory(null);
+                }}
+                className="h-11 pl-4 pr-10 appearance-none bg-transparent border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:border-primary cursor-pointer hover:bg-surface-container-lowest transition-colors"
+              >
+                <option value="time">按时间排序</option>
+                <option value="size">按大小排序</option>
+                <option value="access">按访问排序</option>
+                <option value="question">按提问排序</option>
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-outline pointer-events-none" />
+            </div>
+            <div className="relative">
+              <select
+                value={selectedCategory || ''}
+                onChange={(e) => {
+                  setSelectedCategory(e.target.value || null);
+                  setSearchKeyword('');
+                }}
+                className="h-11 pl-4 pr-10 appearance-none bg-transparent border border-outline-variant rounded-lg text-body-md text-on-surface focus:outline-none focus:border-primary cursor-pointer hover:bg-surface-container-lowest transition-colors"
+              >
+                <option value="">全部分类</option>
+                {categories.map((cat) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-[18px] h-[18px] text-outline pointer-events-none" />
+            </div>
           </div>
         </div>
-      </div>
 
-      {/* 知识库列表 */}
-        <div
-            className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-20">
-            <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        {/* Data Table */}
+        <section className="bg-surface border border-outline-variant/30 rounded-xl soft-shadow overflow-hidden flex flex-col flex-1">
+          {/* List Header (Desktop only) */}
+          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-outline-variant/30 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+            <div className="col-span-5">文件名称</div>
+            <div className="col-span-2 text-right">大小</div>
+            <div className="col-span-2 text-right">添加时间</div>
+            <div className="col-span-2 text-center">状态</div>
+            <div className="col-span-1 text-right">操作</div>
           </div>
-        ) : knowledgeBases.length === 0 ? (
-          <div className="text-center py-20">
-            <HardDrive className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-              <p className="text-slate-500 dark:text-slate-400">暂无知识库</p>
-            <button
-              onClick={onUpload}
-              className="mt-4 text-primary-500 hover:text-primary-600"
-            >
-              上传第一个知识库
-            </button>
-          </div>
-        ) : (
-          <table className="w-full">
-              <thead className="bg-slate-50 dark:bg-slate-700 border-b border-slate-100 dark:border-slate-600">
-              <tr>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  名称
-                </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  分类
-                </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  大小
-                </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  状态
-                </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  提问
-                </th>
-                  <th className="text-left px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  上传时间
-                </th>
-                  <th className="text-right px-6 py-4 text-sm font-medium text-slate-600 dark:text-slate-300">
-                  操作
-                </th>
-              </tr>
-            </thead>
-            <tbody>
-              {knowledgeBases.map((kb, index) => (
-                <motion.tr
-                  key={kb.id}
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  className="border-b border-slate-50 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+
+          {/* List Items */}
+          <div className="flex flex-col divide-y divide-outline-variant/30">
+            {loading ? (
+              <div className="flex items-center justify-center py-20">
+                <Loader2 className="w-8 h-8 text-primary-container animate-spin" />
+              </div>
+            ) : knowledgeBases.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-20">
+                <HardDrive className="w-16 h-16 text-outline mx-auto mb-4" />
+                <p className="font-body-md text-on-surface-variant">暂无知识库</p>
+                <button
+                  onClick={onUpload}
+                  className="mt-4 text-primary hover:text-primary-container transition-colors font-medium"
                 >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-slate-400" />
-                      <div>
-                          <p className="font-medium text-slate-800 dark:text-white">{kb.name}</p>
-                          <p className="text-xs text-slate-400 dark:text-slate-500">{kb.originalFilename}</p>
+                  上传第一个知识库
+                </button>
+              </div>
+            ) : (
+              knowledgeBases.map((kb, index) => {
+                const fileInfo = getFileIconAndColor(kb.originalFilename);
+                return (
+                  <motion.div
+                    key={kb.id}
+                    initial={{ opacity: 0, y: 10 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    className="group grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-container transition-colors duration-150"
+                  >
+                    {/* File Name */}
+                    <div className="col-span-1 md:col-span-5 flex items-center gap-3 overflow-hidden">
+                      <div className={`w-10 h-10 rounded ${fileInfo.bgClass} flex items-center justify-center shrink-0 ${fileInfo.textClass}`}>
+                        <span className="material-symbols-outlined text-[20px]">{fileInfo.icon}</span>
+                      </div>
+                      <div className="min-w-0">
+                        {editingCategoryId === kb.id ? (
+                          <div className="flex items-center gap-2">
+                            <input
+                              ref={categoryInputRef}
+                              type="text"
+                              value={editingCategoryValue}
+                              onChange={(e) => setEditingCategoryValue(e.target.value)}
+                              onKeyDown={(e) => handleCategoryKeyDown(e, kb.id)}
+                              placeholder="输入分类名称"
+                              list="category-suggestions"
+                              className="w-32 px-2 py-1 text-sm border border-primary-container/50 rounded focus:outline-none focus:border-primary bg-surface-container-lowest text-on-surface"
+                              disabled={savingCategory}
+                            />
+                            <datalist id="category-suggestions">
+                              {categories.map((cat) => (
+                                <option key={cat} value={cat} />
+                              ))}
+                            </datalist>
+                            <button
+                              onClick={() => handleSaveCategory(kb.id)}
+                              disabled={savingCategory}
+                              className="p-1 text-primary hover:text-primary-container transition-colors"
+                              title="保存"
+                            >
+                              {savingCategory ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <Check className="w-4 h-4" />
+                              )}
+                            </button>
+                            <button
+                              onClick={handleCancelEditCategory}
+                              disabled={savingCategory}
+                              className="p-1 text-outline hover:text-on-surface-variant transition-colors"
+                              title="取消"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ) : (
+                          <>
+                            <span className="font-body-md text-body-md text-on-surface font-medium truncate block">
+                              {kb.name}
+                            </span>
+                            {kb.category && (
+                              <span
+                                className="text-xs text-on-surface-variant truncate block cursor-pointer hover:text-primary transition-colors inline-flex items-center gap-1"
+                                onClick={() => handleStartEditCategory(kb)}
+                                title="点击编辑分类"
+                              >
+                                <span className="opacity-60 group-hover:opacity-100">{kb.category}</span>
+                                <Edit3 className="w-3 h-3 opacity-0 group-hover:opacity-100" />
+                              </span>
+                            )}
+                          </>
+                        )}
                       </div>
                     </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <AnimatePresence mode="wait">
-                      {editingCategoryId === kb.id ? (
-                        <motion.div
-                          key="editing"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-2"
-                        >
-                          <input
-                            ref={categoryInputRef}
-                            type="text"
-                            value={editingCategoryValue}
-                            onChange={(e) => setEditingCategoryValue(e.target.value)}
-                            onKeyDown={(e) => handleCategoryKeyDown(e, kb.id)}
-                            placeholder="输入分类名称"
-                            list="category-suggestions"
-                            className="w-24 px-2 py-1 text-sm border border-primary-300 dark:border-primary-600 rounded focus:outline-none focus:ring-2 focus:ring-primary-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white"
-                            disabled={savingCategory}
-                          />
-                          <datalist id="category-suggestions">
-                            {categories.map((cat) => (
-                              <option key={cat} value={cat} />
-                            ))}
-                          </datalist>
-                          <button
-                            onClick={() => handleSaveCategory(kb.id)}
-                            disabled={savingCategory}
-                            className="p-1 text-green-600 dark:text-green-400 hover:bg-green-50 dark:hover:bg-green-900/20 rounded transition-colors disabled:opacity-50"
-                            title="保存"
-                          >
-                            {savingCategory ? (
-                              <Loader2 className="w-4 h-4 animate-spin" />
-                            ) : (
-                              <Check className="w-4 h-4" />
-                            )}
-                          </button>
-                          <button
-                            onClick={handleCancelEditCategory}
-                            disabled={savingCategory}
-                            className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-600 rounded transition-colors disabled:opacity-50"
-                            title="取消"
-                          >
-                            <X className="w-4 h-4" />
-                          </button>
-                        </motion.div>
-                      ) : (
-                        <motion.div
-                          key="display"
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          exit={{ opacity: 0 }}
-                          className="flex items-center gap-2 group/category"
-                        >
-                          {kb.category ? (
-                              <span
-                                  className="px-2 py-1 bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-sm">
-                              {kb.category}
-                            </span>
-                          ) : (
-                              <span className="text-slate-400 dark:text-slate-500 text-sm">未分类</span>
-                          )}
-                          <button
-                            onClick={() => handleStartEditCategory(kb)}
-                            className="p-1 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded opacity-0 group-hover/category:opacity-100 transition-all"
-                            title="编辑分类"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                    {formatFileSize(kb.fileSize)}
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <StatusIcon status={kb.vectorStatus} />
-                        <span className="text-sm text-slate-600 dark:text-slate-300">
-                        {getStatusText(kb.vectorStatus)}
-                      </span>
+
+                    {/* Size */}
+                    <div className="col-span-1 md:col-span-2 text-left md:text-right font-body-md text-body-md text-on-surface-variant">
+                      <span className="md:hidden font-label-sm text-outline mr-2">大小:</span>
+                      {formatFileSize(kb.fileSize)}
                     </div>
-                  </td>
-                    <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-300">
-                    {kb.questionCount}
-                  </td>
-                    <td className="px-6 py-4 text-sm text-slate-500 dark:text-slate-400">
-                    {formatDate(kb.uploadedAt)}
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      {/* 下载按钮 */}
+
+                    {/* Time */}
+                    <div className="col-span-1 md:col-span-2 text-left md:text-right font-body-md text-body-md text-on-surface-variant">
+                      <span className="md:hidden font-label-sm text-outline mr-2">时间:</span>
+                      {formatDate(kb.uploadedAt)}
+                    </div>
+
+                    {/* Status */}
+                    <div className="col-span-1 md:col-span-2 flex justify-start md:justify-center items-center">
+                      <StatusBadge status={kb.vectorStatus} />
+                    </div>
+
+                    {/* Actions */}
+                    <div className="col-span-1 md:col-span-1 flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleDownload(kb)}
-                        className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors"
+                        className="text-outline hover:text-primary transition-colors p-1 rounded hover:bg-surface-variant"
                         title="下载"
                       >
-                        <Download className="w-4 h-4" />
+                        <Download className="w-[20px] h-[20px]" />
                       </button>
-                      {/* 重新向量化按钮（仅 FAILED 状态显示） */}
                       {kb.vectorStatus === 'FAILED' && (
                         <button
                           onClick={() => handleRevectorize(kb.id)}
                           disabled={revectorizing === kb.id}
-                          className="p-2 text-slate-400 hover:text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors disabled:opacity-50"
+                          className="text-outline hover:text-primary transition-colors p-1 rounded hover:bg-surface-variant disabled:opacity-50"
                           title="重新向量化"
                         >
-                          <RefreshCw className={`w-4 h-4 ${revectorizing === kb.id ? 'animate-spin' : ''}`} />
+                          <RefreshCw className={`w-[20px] h-[20px] ${revectorizing === kb.id ? 'animate-spin' : ''}`} />
                         </button>
                       )}
-                      {/* 删除按钮 */}
                       <button
                         onClick={() => setDeleteItem(kb)}
-                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors"
+                        className="text-outline hover:text-error transition-colors p-1 rounded hover:bg-error-container"
                         title="删除"
                       >
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2 className="w-[20px] h-[20px]" />
                       </button>
                     </div>
-                  </td>
-                </motion.tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+                  </motion.div>
+                );
+              })
+            )}
+          </div>
+
+          {/* Pagination */}
+          {!loading && knowledgeBases.length > 0 && (
+            <div className="mt-auto px-6 py-4 bg-surface-container-low border-t border-outline-variant/30 flex items-center justify-between">
+              <span className="font-body-md text-body-md text-on-surface-variant">
+                共 {stats?.totalCount ?? knowledgeBases.length} 条数据
+              </span>
+              <div className="flex items-center gap-2">
+                <button className="px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed font-label-md text-label-md transition-colors flex items-center gap-1">
+                  <ChevronLeft className="w-[18px] h-[18px]" />
+                  上一页
+                </button>
+                <button className="w-8 h-8 rounded-lg bg-primary text-on-primary flex items-center justify-center font-label-md text-label-md">
+                  1
+                </button>
+                <button className="w-8 h-8 rounded-lg text-on-surface hover:bg-surface-container flex items-center justify-center font-label-md text-label-md transition-colors">
+                  2
+                </button>
+                <button className="w-8 h-8 rounded-lg text-on-surface hover:bg-surface-container flex items-center justify-center font-label-md text-label-md transition-colors">
+                  3
+                </button>
+                <span className="text-on-surface-variant px-1">...</span>
+                <button className="px-3 py-1.5 rounded-lg border border-outline-variant text-on-surface hover:bg-surface-container disabled:opacity-50 disabled:cursor-not-allowed font-label-md text-label-md transition-colors flex items-center gap-1">
+                  下一页
+                  <ChevronRight className="w-[18px] h-[18px]" />
+                </button>
+              </div>
+            </div>
+          )}
+        </section>
       </div>
 
-      {/* 删除确认对话框 */}
+      {/* Delete Confirm Dialog */}
       <DeleteConfirmDialog
         open={deleteItem !== null}
         item={deleteItem}

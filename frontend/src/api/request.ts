@@ -9,12 +9,32 @@ interface Result<T = unknown> {
   data: T;
 }
 
-const baseURL = import.meta.env.PROD ? '' : 'http://localhost:8080';
+const getBaseURL = () => {
+  const env = import.meta.env.VITE_API_BASE_URL;
+  if (env) return env;
+
+  if (import.meta.env.PROD) return '';
+
+  return `http://${window.location.hostname}:8080`;
+};
+
+const baseURL = getBaseURL();
 
 const instance: AxiosInstance = axios.create({
   baseURL,
   timeout: 60000,
 });
+
+instance.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('auth_token');
+    if (token && config.headers) {
+      config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error),
+);
 
 /**
  * 响应拦截器

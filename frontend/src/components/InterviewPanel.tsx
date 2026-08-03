@@ -68,16 +68,16 @@ export default function InterviewPanel({
 
   if (interviews.length === 0) {
     return (
-        <div className="bg-white dark:bg-slate-800 rounded-2xl p-12 text-center">
+        <div className="bg-surface rounded-xl p-12 text-center">
           <div
-              className="w-16 h-16 mx-auto mb-6 bg-slate-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
-          <Mic className="w-8 h-8 text-slate-400" />
+              className="w-16 h-16 mx-auto mb-6 bg-surface-container-lowest rounded-full flex items-center justify-center">
+          <Mic className="w-8 h-8 text-outline" />
         </div>
-          <h3 className="text-xl font-semibold text-slate-700 dark:text-slate-300 mb-2">暂无面试记录</h3>
-          <p className="text-slate-500 dark:text-slate-400 mb-6">开始模拟面试，获取专业评估</p>
+          <h3 className="text-xl font-semibold text-on-surface mb-2">暂无面试记录</h3>
+          <p className="text-on-surface-variant mb-6">开始模拟面试，获取专业评估</p>
         <motion.button
           onClick={onStartInterview}
-          className="px-6 py-3 bg-gradient-to-r from-primary-500 to-primary-600 text-white rounded-xl font-medium shadow-lg shadow-primary-500/30"
+          className="px-6 py-3 bg-primary-container text-white rounded-xl font-medium shadow-lg shadow-sm"
           whileHover={{ scale: 1.02 }}
           whileTap={{ scale: 0.98 }}
         >
@@ -92,16 +92,16 @@ export default function InterviewPanel({
       {/* 面试表现趋势图 */}
       {chartData.length > 0 && (
           <motion.div
-              className="bg-white dark:bg-slate-800 rounded-2xl p-6"
+              className="bg-surface rounded-xl p-6"
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
         >
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
-              <TrendingUp className="w-5 h-5 text-primary-500" />
-              <span className="font-semibold text-slate-800 dark:text-white">面试表现趋势</span>
+              <TrendingUp className="w-5 h-5 text-primary-container" />
+              <span className="font-semibold text-on-surface">面试表现趋势</span>
             </div>
-            <span className="text-sm text-slate-500 dark:text-slate-400">共 {chartData.length} 场练习</span>
+            <span className="text-sm text-on-surface-variant">共 {chartData.length} 场练习</span>
           </div>
 
           <div className="h-48">
@@ -145,13 +145,13 @@ export default function InterviewPanel({
 
       {/* 历史面试场次 */}
       <motion.div
-          className="bg-white dark:bg-slate-800 rounded-2xl p-6"
+          className="bg-surface rounded-xl p-6"
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
       >
         <div className="flex items-center justify-between mb-6">
-          <span className="font-semibold text-slate-800 dark:text-white">历史面试场次</span>
+          <span className="font-semibold text-on-surface">历史面试场次</span>
         </div>
 
         <div className="space-y-4">
@@ -185,13 +185,13 @@ export default function InterviewPanel({
 
         {loadingInterview && (
             <div className="fixed inset-0 bg-black/20 dark:bg-black/50 flex items-center justify-center z-50">
-              <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 flex items-center gap-4">
+              <div className="bg-surface rounded-xl p-6 flex items-center gap-4">
                 <motion.div
-                    className="w-8 h-8 border-3 border-slate-200 dark:border-slate-600 border-t-primary-500 rounded-full"
+                    className="w-8 h-8 border-3 border-outline-variant border-t-primary-container rounded-full"
                 animate={{ rotate: 360 }}
                 transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
               />
-                <span className="text-slate-600 dark:text-slate-300">加载面试详情...</span>
+                <span className="text-on-surface-variant">加载面试详情...</span>
             </div>
           </div>
         )}
@@ -226,7 +226,7 @@ function InterviewItemCard({
       animate={{ opacity: 1, x: 0 }}
       transition={{ delay: index * 0.1 }}
       onClick={onView}
-      className="flex items-center gap-4 p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-700 cursor-pointer transition-colors group"
+      className="flex items-center gap-4 p-4 bg-surface-container-high hover:bg-surface-container cursor-pointer transition-colors group"
     >
       {/* 得分 */}
       <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bold text-lg ${
@@ -239,7 +239,7 @@ function InterviewItemCard({
 
       {/* 信息 */}
       <div className="flex-1 min-w-0">
-        <p className="font-medium text-slate-800 dark:text-white truncate">
+        <p className="font-medium text-on-surface truncate">
           模拟面试 #{total - index}
         </p>
         <div className="flex items-center gap-4 text-sm text-slate-500 dark:text-slate-400">
@@ -260,7 +260,7 @@ function InterviewItemCard({
       <motion.button
         onClick={(e) => { e.stopPropagation(); onExport(); }}
         disabled={exporting}
-        className="px-3 py-2 text-slate-400 hover:text-primary-500 hover:bg-white dark:hover:bg-slate-600 rounded-lg transition-all"
+        className="px-3 py-2 text-outline hover:text-primary hover:bg-surface-container rounded-lg transition-all"
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
       >
@@ -271,7 +271,7 @@ function InterviewItemCard({
         <button
           onClick={onDelete}
           disabled={deleting}
-          className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 text-outline hover:text-error hover:bg-error-container/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           title="删除面试记录"
         >
           {deleting ? (
@@ -288,7 +288,7 @@ function InterviewItemCard({
 
       {/* 箭头 */}
       <ChevronRight
-          className="w-5 h-5 text-slate-300 dark:text-slate-600 group-hover:text-primary-500 group-hover:translate-x-1 transition-all flex-shrink-0"/>
+          className="w-5 h-5 text-outline-variant group-hover:text-primary-container group-hover:translate-x-1 transition-all flex-shrink-0"/>
     </motion.div>
   );
 }

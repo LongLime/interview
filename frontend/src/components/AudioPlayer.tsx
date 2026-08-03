@@ -79,8 +79,8 @@ export default function AudioPlayer({ audioData, text, onPlayEnd }: AudioPlayerP
 
       {/* Text display */}
       {text && (
-        <div className="p-4 bg-slate-50 rounded-lg border border-slate-200">
-          <p className="text-slate-700">{text}</p>
+        <div className="p-4 bg-surface-container-lowest rounded-lg border border-outline-variant">
+          <p className="text-on-surface">{text}</p>
         </div>
       )}
 
@@ -89,7 +89,7 @@ export default function AudioPlayer({ audioData, text, onPlayEnd }: AudioPlayerP
         {/* Play/Pause button */}
         <button
           onClick={togglePlay}
-          className="w-12 h-12 rounded-full bg-primary-500 hover:bg-primary-600
+          className="w-12 h-12 rounded-full bg-primary-container hover:opacity-90
                      flex items-center justify-center text-white transition-colors"
         >
           {isPlaying ? (
@@ -101,7 +101,7 @@ export default function AudioPlayer({ audioData, text, onPlayEnd }: AudioPlayerP
 
         {/* Volume controls */}
         <div className="flex items-center gap-2">
-          <button onClick={toggleMute} className="text-slate-400 hover:text-slate-600">
+          <button onClick={toggleMute} className="text-outline hover:text-on-surface-variant">
             {isMuted ? (
               <VolumeX className="w-5 h-5" />
             ) : (

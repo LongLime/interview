@@ -22,3 +22,4 @@ GEMINI.md
 
 # Playwright MCP
 .playwright-mcp/
+scripts/venv/

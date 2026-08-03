@@ -362,13 +362,13 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
       {/* 头部 */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-slate-900 dark:text-white mb-1">问答助手</h1>
-          <p className="text-slate-500 dark:text-slate-400 text-sm">选择知识库，向 AI 提问</p>
+          <h1 className="text-2xl font-bold text-on-surface mb-1">问答助手</h1>
+          <p className="text-on-surface-variant text-sm">选择知识库，向 AI 提问</p>
         </div>
         <div className="flex gap-3">
           <motion.button
             onClick={onUpload}
-            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-sm"
+            className="px-4 py-2 border border-outline-variant text-on-surface-variant font-medium hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-all text-sm"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -376,7 +376,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
           </motion.button>
           <motion.button
             onClick={onBack}
-            className="px-4 py-2 border border-slate-200 dark:border-slate-600 rounded-xl text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-50 dark:hover:bg-slate-700 transition-all text-sm"
+            className="px-4 py-2 border border-outline-variant text-on-surface-variant font-medium hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-all text-sm"
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
@@ -389,13 +389,13 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
         {/* 左侧：对话历史 */}
         <div className="w-64 flex-shrink-0">
           <div
-              className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm h-full flex flex-col border border-slate-100 dark:border-slate-700">
+              className="bg-surface rounded-xl p-4 shadow-sm h-full flex flex-col border border-outline-variant">
             <div className="flex items-center justify-between mb-4">
-              <h2 className="text-base font-semibold text-slate-800 dark:text-white">对话历史</h2>
+              <h2 className="text-base font-semibold text-on-surface">对话历史</h2>
               <motion.button
                 onClick={handleNewSession}
                 disabled={selectedKbIds.size === 0}
-                className="p-1.5 text-primary-500 hover:bg-primary-50 dark:hover:bg-primary-900/30 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="p-1.5 text-primary-container hover:bg-surface-container-high dark:hover:bg-surface-container-high rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 title="新建对话"
@@ -408,13 +408,13 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
               {loadingSessions ? (
                 <div className="text-center py-6">
                   <motion.div
-                    className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto"
+                    className="w-5 h-5 border-2 border-primary-container border-t-transparent rounded-full mx-auto"
                     animate={{ rotate: 360 }}
                     transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                   />
                 </div>
               ) : sessions.length === 0 ? (
-                  <div className="text-center py-6 text-slate-400 dark:text-slate-500 text-sm">
+                  <div className="text-center py-6 text-outline text-sm">
                   暂无对话历史
                 </div>
               ) : (
@@ -424,19 +424,19 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       key={session.id}
                       onClick={() => handleLoadSession(session.id)}
                       className={`p-3 rounded-lg cursor-pointer transition-all group ${currentSessionId === session.id
-                          ? 'bg-primary-50 dark:bg-primary-900/30 border border-primary-500'
-                          : 'bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 border border-transparent'
-                        } ${session.isPinned ? 'border-l-4 border-l-primary-500' : ''}`}
+                          ? 'bg-primary-container/30 dark:bg-primary-container/30 border border-primary-container'
+                          : 'bg-surface-container-lowest dark:bg-surface-container-high hover:bg-surface-container-high dark:hover:bg-surface-container-high border border-transparent'
+                        } ${session.isPinned ? 'border-l-4 border-l-primary-container' : ''}`}
                     >
                       <div className="flex items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-1.5">
                             {session.isPinned && (
-                              <Pin className="w-3.5 h-3.5 text-primary-500 fill-primary-500 flex-shrink-0" />
+                              <Pin className="w-3.5 h-3.5 text-primary-container fill-primary-container flex-shrink-0" />
                             )}
-                            <p className="font-medium text-slate-800 dark:text-white text-sm truncate">{session.title}</p>
+                            <p className="font-medium text-on-surface text-sm truncate">{session.title}</p>
                           </div>
-                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                          <p className="text-xs text-on-surface-variant mt-1">
                             {session.messageCount} 条消息 · {formatTimeAgo(session.updatedAt)}
                           </p>
                         </div>
@@ -444,19 +444,19 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                           <button
                             onClick={(e) => handleTogglePin(session.id, e)}
                             className={`p-1 rounded transition-colors ${session.isPinned
-                              ? 'text-primary-500 hover:text-primary-600'
-                              : 'text-slate-400 hover:text-primary-500'
+                              ? 'text-primary-container hover:text-primary'
+                              : 'text-outline hover:text-primary-container'
                               }`}
                             title={session.isPinned ? '取消置顶' : '置顶'}
                           >
-                            <Pin className={`w-4 h-4 ${session.isPinned ? 'fill-primary-500' : ''}`} />
+                            <Pin className={`w-4 h-4 ${session.isPinned ? 'fill-primary-container' : ''}`} />
                           </button>
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleEditSessionTitle(session.id, session.title);
                             }}
-                            className="p-1 text-slate-400 hover:text-primary-500 rounded transition-colors"
+                            className="p-1 text-outline hover:text-primary-container rounded transition-colors"
                             title="编辑标题"
                           >
                             <Edit className="w-4 h-4" />
@@ -466,7 +466,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                               e.stopPropagation();
                               setSessionDeleteConfirm({ id: session.id, title: session.title });
                             }}
-                            className="p-1 text-slate-400 hover:text-red-500 rounded transition-colors"
+                            className="p-1 text-outline hover:text-red-500 rounded transition-colors"
                             title="删除"
                           >
                             <Trash2 className="w-4 h-4" />
@@ -484,12 +484,12 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
         {/* 中间：聊天区域 */}
         <div className="flex-1 min-w-0">
           <div
-              className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm flex flex-col h-full border border-slate-100 dark:border-slate-700">
+              className="bg-surface rounded-xl shadow-sm flex flex-col h-full border border-outline-variant">
             {selectedKbIds.size > 0 ? (
               <>
                 {/* 会话信息 */}
-                <div className="p-4 border-b border-slate-200 dark:border-slate-600">
-                  <h2 className="text-base font-semibold text-slate-800 dark:text-white">
+                <div className="p-4 border-b border-outline-variant">
+                  <h2 className="text-base font-semibold text-on-surface">
                     {currentSessionTitle || (selectedKbIds.size === 1
                       ? knowledgeBases.find(kb => kb.id === Array.from(selectedKbIds)[0])?.name || '新对话'
                       : `${selectedKbIds.size} 个知识库 - 新对话`)}
@@ -499,7 +499,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       const kb = knowledgeBases.find(k => k.id === kbId);
                       return kb ? (
                           <span key={kbId}
-                                className="px-2 py-0.5 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs rounded-full">
+                                className="px-2 py-0.5 bg-primary-container/30 dark:bg-primary-container/30 text-primary dark:text-primary-400 text-xs rounded-full">
                           {kb.name}
                         </span>
                       ) : null;
@@ -508,10 +508,10 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                 </div>
 
                 {/* 消息列表 */}
-                <div className="flex-1 min-h-0 relative dark:bg-slate-800">
+                <div className="flex-1 min-h-0 relative bg-surface-container-lowest">
                   {messages.length === 0 ? (
                       <div
-                          className="absolute inset-0 flex flex-col items-center justify-center text-slate-400 dark:text-slate-500">
+                          className="absolute inset-0 flex flex-col items-center justify-center text-outline">
                       <MessageSquare className="w-12 h-12 mx-auto mb-3 opacity-50" />
                       <p className="text-sm">开始提问吧！</p>
                     </div>
@@ -523,16 +523,16 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       followOutput="smooth"
                       className="h-full w-full"
                       itemContent={(index, msg) => (
-                          <div className="pb-4 px-4 first:pt-4 dark:bg-slate-800">
+                          <div className="pb-4 px-4 first:pt-4 bg-surface-container-lowest">
                           <motion.div
                             initial={{ opacity: 0, y: 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             className={`flex ${msg.type === 'user' ? 'justify-end' : 'justify-start'}`}
                           >
                             <div
-                              className={`max-w-[85%] rounded-2xl p-4 shadow-sm ${msg.type === 'user'
-                                ? 'bg-primary-600 text-white'
-                                  : 'bg-white dark:bg-slate-800 border border-slate-100 dark:border-slate-600 text-slate-800 dark:text-slate-100'
+                              className={`max-w-[85%] rounded-xl p-4 shadow-sm ${msg.type === 'user'
+                                ? 'bg-primary-container text-on-primary'
+                                  : 'bg-surface border border-outline-variant text-on-surface'
                               }`}
                             >
                               {msg.type === 'user' ? (
@@ -550,7 +550,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                                         if (isInline) {
                                           return (
                                               <code
-                                                  className="bg-slate-100 dark:bg-slate-600 text-primary-600 dark:text-primary-400 px-1.5 py-0.5 rounded-md text-sm font-normal">
+                                                  className="bg-surface-container-high text-primary dark:text-primary-400 px-1.5 py-0.5 rounded-md text-sm font-normal">
                                               {children}
                                             </code>
                                           );
@@ -570,7 +570,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                                     {formatMarkdown(msg.content)}
                                   </ReactMarkdown>
                                   {loading && index === messages.length - 1 && (
-                                    <span className="inline-block w-0.5 h-5 bg-primary-500 ml-1 animate-pulse" />
+                                    <span className="inline-block w-0.5 h-5 bg-primary-container ml-1 animate-pulse" />
                                   )}
                                 </div>
                               )}
@@ -583,7 +583,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                 </div>
 
                 {/* 输入区域 */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-600">
+                <div className="p-4 border-t border-outline-variant">
                   <div className="flex gap-3">
                     <input
                       type="text"
@@ -591,13 +591,13 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       onChange={(e) => setQuestion(e.target.value)}
                       onKeyPress={(e) => e.key === 'Enter' && !e.shiftKey && handleSubmitQuestion()}
                       placeholder="输入您的问题..."
-                      className="flex-1 px-4 py-2.5 border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent text-sm bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+                      className="flex-1 px-4 py-2.5 border border-outline-variant rounded-xl focus:outline-none focus:border-primary-container text-sm bg-surface text-on-surface placeholder-outline"
                       disabled={loading}
                     />
                     <motion.button
                       onClick={handleSubmitQuestion}
                       disabled={!question.trim() || selectedKbIds.size === 0 || loading}
-                      className="px-5 py-2.5 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                      className="px-5 py-2.5 bg-primary-container text-on-primary rounded-xl font-medium hover:bg-primary-container transition-all disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                       whileHover={{ scale: loading ? 1 : 1.02 }}
                       whileTap={{ scale: loading ? 1 : 0.98 }}
                     >
@@ -607,7 +607,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                 </div>
               </>
             ) : (
-                <div className="flex-1 flex items-center justify-center text-slate-400 dark:text-slate-500">
+                <div className="flex-1 flex items-center justify-center text-outline">
                 <div className="text-center">
                   <svg className="w-12 h-12 mx-auto mb-3 opacity-50" viewBox="0 0 24 24" fill="none">
                     <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
@@ -630,12 +630,12 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
               className="flex-shrink-0 overflow-hidden"
             >
               <div
-                  className="bg-white dark:bg-slate-800 rounded-2xl p-4 shadow-sm h-full flex flex-col w-[280px] border border-slate-100 dark:border-slate-700">
+                  className="bg-surface rounded-xl p-4 shadow-sm h-full flex flex-col w-[280px] border border-outline-variant">
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-base font-semibold text-slate-800 dark:text-white">选择知识库</h2>
+                  <h2 className="text-base font-semibold text-on-surface">选择知识库</h2>
                   <button
                     onClick={() => setRightPanelOpen(false)}
-                    className="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 rounded"
+                    className="p-1 text-outline hover:text-on-surface-variant dark:hover:text-on-surface-variant rounded"
                   >
                     <ChevronLeft className="w-5 h-5" />
                   </button>
@@ -649,11 +649,11 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                     onChange={(e) => setSearchKeyword(e.target.value)}
                     onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
                     placeholder="搜索..."
-                    className="flex-1 px-3 py-1.5 text-sm border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+                    className="flex-1 px-3 py-1.5 text-sm border border-outline-variant rounded-lg focus:outline-none focus:border-primary-container bg-surface text-on-surface placeholder-outline"
                   />
                   <button
                     onClick={handleSearch}
-                    className="px-3 py-1.5 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+                    className="px-3 py-1.5 text-sm bg-primary-container text-on-primary rounded-lg hover:bg-primary-container"
                   >
                     搜索
                   </button>
@@ -667,7 +667,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       setSortBy(e.target.value as SortOption);
                       setSearchKeyword('');
                     }}
-                    className="w-full px-2 py-1 text-xs border border-slate-200 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-1 focus:ring-primary-500 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-300"
+                    className="w-full px-2 py-1 text-xs border border-outline-variant rounded-lg focus:outline-none focus:border-primary-container bg-surface text-on-surface-variant"
                   >
                     <option value="time">时间排序</option>
                     <option value="size">大小排序</option>
@@ -681,16 +681,16 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                   {loadingList ? (
                     <div className="text-center py-6">
                       <motion.div
-                        className="w-5 h-5 border-2 border-primary-500 border-t-transparent rounded-full mx-auto"
+                        className="w-5 h-5 border-2 border-primary-container border-t-transparent rounded-full mx-auto"
                         animate={{ rotate: 360 }}
                         transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
                       />
                     </div>
                   ) : knowledgeBases.length === 0 ? (
-                      <div className="text-center py-6 text-slate-500 dark:text-slate-400">
+                      <div className="text-center py-6 text-on-surface-variant">
                       <p className="mb-2 text-sm">{searchKeyword ? '未找到' : '暂无知识库'}</p>
                       {!searchKeyword && (
-                        <button onClick={onUpload} className="text-primary-500 hover:text-primary-600 font-medium text-sm">
+                        <button onClick={onUpload} className="text-primary-container hover:text-primary font-medium text-sm">
                           立即上传
                         </button>
                       )}
@@ -699,19 +699,19 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                     <div className="space-y-2">
                       {groupedKnowledgeBases.map((group) => (
                           <div key={group.name}
-                               className="border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden">
+                               className="border border-outline-variant rounded-lg overflow-hidden">
                           <button
                             onClick={() => toggleCategory(group.name)}
-                            className="w-full flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-700/50 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+                            className="w-full flex items-center justify-between px-3 py-2 bg-surface-container-lowest hover:bg-surface-container-high transition-colors"
                           >
                             <div className="flex items-center gap-2">
                               <ChevronRight
-                                className={`w-3.5 h-3.5 text-slate-400 transition-transform ${group.isExpanded ? 'rotate-90' : ''}`}
+                                className={`w-3.5 h-3.5 text-outline transition-transform ${group.isExpanded ? 'rotate-90' : ''}`}
                               />
                               <span
-                                  className="font-medium text-slate-700 dark:text-slate-300 text-sm">{group.name}</span>
+                                  className="font-medium text-on-surface-variant text-sm">{group.name}</span>
                             </div>
-                            <span className="text-xs text-slate-400">{group.items.length}</span>
+                            <span className="text-xs text-outline">{group.items.length}</span>
                           </button>
 
                           <AnimatePresence>
@@ -729,8 +729,8 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                                       key={kb.id}
                                       onClick={() => handleToggleKb(kb.id)}
                                       className={`p-2 rounded-lg cursor-pointer transition-all ${selectedKbIds.has(kb.id)
-                                          ? 'bg-primary-50 dark:bg-primary-900/30 border border-primary-500'
-                                          : 'bg-white dark:bg-slate-700/50 hover:bg-slate-50 dark:hover:bg-slate-700 border border-transparent'
+                                          ? 'bg-primary-container/30 dark:bg-primary-container/30 border border-primary-container'
+                                          : 'bg-surface hover:bg-surface-container-high dark:hover:bg-surface-container-high border border-transparent'
                                         }`}
                                     >
                                       <div className="flex items-center gap-2">
@@ -739,12 +739,12 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                                           checked={selectedKbIds.has(kb.id)}
                                           onChange={() => handleToggleKb(kb.id)}
                                           onClick={(e) => e.stopPropagation()}
-                                          className="w-3.5 h-3.5 text-primary-500 rounded focus:ring-primary-500"
+                                          className="w-3.5 h-3.5 text-primary-container focus:border-primary-container"
                                         />
                                         <span
-                                            className="font-medium text-slate-800 dark:text-white text-xs truncate flex-1">{kb.name}</span>
+                                            className="font-medium text-on-surface text-xs truncate flex-1">{kb.name}</span>
                                       </div>
-                                      <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5 ml-5">{formatFileSize(kb.fileSize)}</p>
+                                      <p className="text-xs text-outline mt-0.5 ml-5">{formatFileSize(kb.fileSize)}</p>
                                     </div>
                                   ))}
                                 </div>
@@ -765,7 +765,7 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
         {!rightPanelOpen && (
           <button
             onClick={() => setRightPanelOpen(true)}
-            className="flex-shrink-0 w-10 bg-white dark:bg-slate-800 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-700 flex items-center justify-center hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+            className="flex-shrink-0 w-10 bg-surface rounded-xl shadow-sm border border-outline-variant flex items-center justify-center hover:bg-surface-container-high dark:hover:bg-surface-container-high transition-colors"
             title="展开知识库面板"
           >
             <ChevronRight className="w-5 h-5 text-slate-400" />
@@ -802,16 +802,16 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 onClick={(e) => e.stopPropagation()}
-                className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-md w-full p-6 border border-slate-100 dark:border-slate-700"
+                className="bg-surface rounded-xl shadow-2xl max-w-md w-full p-6 border border-outline-variant"
               >
-                <h3 className="text-xl font-bold text-slate-900 dark:text-white mb-4">编辑标题</h3>
+                <h3 className="text-xl font-bold text-on-surface mb-4">编辑标题</h3>
                 <input
                   type="text"
                   value={newSessionTitle}
                   onChange={(e) => setNewSessionTitle(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSaveSessionTitle()}
                   placeholder="请输入新标题"
-                  className="w-full px-4 py-3 text-sm border border-slate-200 dark:border-slate-600 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 mb-4 bg-white dark:bg-slate-700 text-slate-900 dark:text-white placeholder-slate-400"
+                  className="w-full px-4 py-3 text-sm border border-outline-variant rounded-xl focus:outline-none focus:border-primary-container mb-4 bg-surface text-on-surface placeholder-outline"
                   autoFocus
                 />
                 <div className="flex justify-end gap-3">
@@ -820,14 +820,14 @@ export default function KnowledgeBaseQueryPage({ onBack, onUpload }: KnowledgeBa
                       setEditingSessionTitle(null);
                       setNewSessionTitle('');
                     }}
-                    className="px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:text-slate-800 dark:hover:text-white"
+                    className="px-4 py-2 text-sm text-on-surface-variant hover:text-on-surface"
                   >
                     取消
                   </button>
                   <button
                     onClick={handleSaveSessionTitle}
                     disabled={!newSessionTitle.trim()}
-                    className="px-4 py-2 text-sm bg-primary-500 text-white rounded-lg hover:bg-primary-600 disabled:opacity-50"
+                    className="px-4 py-2 text-sm bg-primary-container text-on-primary rounded-lg hover:bg-primary-container disabled:opacity-50"
                   >
                     保存
                   </button>

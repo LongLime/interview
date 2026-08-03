@@ -57,18 +57,18 @@ export default function InterviewChatPanel({
     <div className="flex flex-col h-[calc(100vh-200px)] max-w-4xl mx-auto">
       {/* 进度条 */}
         <div
-            className="bg-white dark:bg-slate-800 rounded-2xl p-6 mb-4 shadow-sm dark:shadow-slate-900/50 border border-slate-100 dark:border-slate-700">
+            className="bg-surface rounded-xl p-6 mb-4 shadow-sm border border-outline-variant">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-sm font-semibold text-slate-700 dark:text-slate-300">
+          <span className="text-sm font-semibold text-on-surface">
             题目 {currentQuestion ? currentQuestion.questionIndex + 1 : 0} / {session.totalQuestions}
           </span>
-            <span className="text-sm text-slate-500 dark:text-slate-400">
+            <span className="text-sm text-on-surface-variant">
             {Math.round(progress)}%
           </span>
         </div>
-            <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+            <div className="h-2 bg-surface-container rounded-full overflow-hidden">
           <motion.div
-            className="h-full bg-gradient-to-r from-primary-500 to-primary-600 rounded-full"
+            className="h-full bg-primary-container rounded-full"
             initial={{ width: 0 }}
             animate={{ width: `${progress}%` }}
             transition={{ duration: 0.3 }}
@@ -78,7 +78,7 @@ export default function InterviewChatPanel({
 
       {/* 聊天区域 */}
         <div
-            className="flex-1 bg-white dark:bg-slate-800 rounded-2xl shadow-sm dark:shadow-slate-900/50 overflow-hidden flex flex-col min-h-0 border border-slate-100 dark:border-slate-700">
+            className="flex-1 bg-surface rounded-xl shadow-sm overflow-hidden flex flex-col min-h-0 border border-outline-variant">
         <Virtuoso
           ref={virtuosoRef}
           data={messages}
@@ -97,14 +97,14 @@ export default function InterviewChatPanel({
         />
 
         {/* 输入区域 */}
-            <div className="border-t border-slate-200 dark:border-slate-600 p-4 bg-slate-50 dark:bg-slate-700/50">
+            <div className="border-t border-outline-variant p-4 bg-surface-container-lowest">
           <div className="flex gap-3">
             <textarea
               value={answer}
               onChange={(e) => onAnswerChange(e.target.value)}
               onKeyDown={handleKeyPress}
               placeholder="输入你的回答... (Ctrl/Cmd + Enter 提交)"
-              className="flex-1 px-4 py-3 border border-slate-300 dark:border-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary-500 focus:border-transparent resize-none bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder-slate-400 dark:placeholder-slate-500"
+              className="flex-1 px-4 py-3 border border-outline-variant rounded-xl focus:outline-none focus:border-primary-container resize-none bg-surface text-on-surface placeholder-outline"
               rows={3}
               disabled={isSubmitting}
             />
@@ -112,7 +112,7 @@ export default function InterviewChatPanel({
               <motion.button
                 onClick={onSubmit}
                 disabled={!answer.trim() || isSubmitting}
-                className="px-6 py-3 bg-primary-500 text-white rounded-xl font-medium hover:bg-primary-600 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                className="px-6 py-3 bg-primary-container text-white rounded-xl font-medium hover:bg-primary-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
                 whileHover={{ scale: isSubmitting || !answer.trim() ? 1 : 1.02 }}
                 whileTap={{ scale: isSubmitting || !answer.trim() ? 1 : 0.98 }}
               >
@@ -135,7 +135,7 @@ export default function InterviewChatPanel({
               <motion.button
                 onClick={() => onShowCompleteConfirm(true)}
                 disabled={isSubmitting}
-                className="px-6 py-3 bg-slate-200 dark:bg-slate-600 text-slate-700 dark:text-slate-200 rounded-xl font-medium hover:bg-slate-300 dark:hover:bg-slate-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
+                className="px-6 py-3 bg-surface-container text-on-surface rounded-xl font-medium hover:bg-surface-container transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
                 whileHover={{ scale: isSubmitting ? 1 : 1.02 }}
                 whileTap={{ scale: isSubmitting ? 1 : 0.98 }}
               >

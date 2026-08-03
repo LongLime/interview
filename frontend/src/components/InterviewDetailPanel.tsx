@@ -90,7 +90,7 @@ function ScoreCard({
   strokeDashoffset: number;
 }) {
   return (
-    <div className="bg-gradient-to-br from-violet-600 via-purple-600 to-indigo-700 rounded-2xl p-8 text-white">
+    <div className="bg-primary-container rounded-xl p-8 text-white">
       <div className="flex flex-col items-center text-center">
         {/* 圆环进度条 */}
         <div className="relative w-32 h-32 mb-6">
@@ -143,12 +143,12 @@ function ScoreCard({
 function StrengthsSection({ strengths }: { strengths: string[] }) {
   return (
       <motion.div
-          className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm"
+          className="bg-surface rounded-xl p-6 shadow-sm"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 }}
     >
-        <h4 className="font-semibold text-emerald-600 dark:text-emerald-400 mb-4 flex items-center gap-2">
+        <h4 className="font-semibold text-secondary mb-4 flex items-center gap-2">
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
           <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           <polyline points="22,4 12,14.01 9,11.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
@@ -157,8 +157,8 @@ function StrengthsSection({ strengths }: { strengths: string[] }) {
       </h4>
       <ul className="space-y-3">
         {strengths.map((s: string, i: number) => (
-            <li key={i} className="text-slate-700 dark:text-slate-300 flex items-start gap-3">
-            <span className="w-2 h-2 bg-primary-500 rounded-full mt-2 flex-shrink-0"></span>
+            <li key={i} className="text-on-surface flex items-start gap-3">
+            <span className="w-2 h-2 bg-primary-container rounded-full mt-2 flex-shrink-0"></span>
             <span>{s}</span>
           </li>
         ))}
@@ -171,12 +171,12 @@ function StrengthsSection({ strengths }: { strengths: string[] }) {
 function ImprovementsSection({ improvements }: { improvements: string[] }) {
   return (
       <motion.div
-          className="bg-white dark:bg-slate-800 rounded-2xl p-6 shadow-sm"
+          className="bg-surface rounded-xl p-6 shadow-sm"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.2 }}
     >
-        <h4 className="font-semibold text-amber-600 dark:text-amber-400 mb-4 flex items-center gap-2">
+        <h4 className="font-semibold text-tertiary mb-4 flex items-center gap-2">
         <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none">
           <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="2"/>
           <line x1="12" y1="8" x2="12" y2="12" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -186,8 +186,8 @@ function ImprovementsSection({ improvements }: { improvements: string[] }) {
       </h4>
       <ul className="space-y-3">
         {improvements.map((s: string, i: number) => (
-            <li key={i} className="text-slate-700 dark:text-slate-300 flex items-start gap-3">
-            <span className="w-2 h-2 bg-amber-500 rounded-full mt-2 flex-shrink-0"></span>
+            <li key={i} className="text-on-surface flex items-start gap-3">
+            <span className="w-2 h-2 bg-tertiary rounded-full mt-2 flex-shrink-0"></span>
             <span>{s}</span>
           </li>
         ))}
@@ -208,8 +208,8 @@ function QuestionsSection({
 }) {
   return (
     <div>
-      <h4 className="font-semibold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
-        <svg className="w-5 h-5 text-primary-500" viewBox="0 0 24 24" fill="none">
+      <h4 className="font-semibold text-on-surface mb-4 flex items-center gap-2">
+        <svg className="w-5 h-5 text-primary-container" viewBox="0 0 24 24" fill="none">
           <path d="M21 15C21 15.5304 20.7893 16.0391 20.4142 16.4142C20.0391 16.7893 19.5304 17 19 17H7L3 21V5C3 4.46957 3.21071 3.96086 3.58579 3.58579C3.96086 3.21071 4.46957 3 5 3H19C19.5304 3 20.0391 3.21071 20.4142 3.58579C20.7893 3.96086 21 4.46957 21 5V15Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
         </svg>
         问答记录详情
@@ -244,14 +244,14 @@ function QuestionCard({
 }) {
   return (
       <motion.div
-          className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm overflow-hidden"
+          className="bg-surface rounded-xl shadow-sm overflow-hidden"
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay: 0.1 + index * 0.05 }}
     >
       {/* 问题头部 */}
         <div
-            className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors"
+            className="px-5 py-4 flex items-center justify-between cursor-pointer hover:bg-surface-container-high transition-colors"
         onClick={onToggle}
       >
         <div className="flex items-center gap-3">
@@ -260,7 +260,7 @@ function QuestionCard({
             {answer.questionIndex + 1}
           </span>
           <span
-              className="px-3 py-1 bg-primary-50 dark:bg-primary-900/30 text-primary-600 dark:text-primary-400 text-xs font-medium rounded-full">
+              className="px-3 py-1 bg-primary-container/10 text-primary-container text-xs font-medium rounded-full">
             {answer.category || '综合'}
           </span>
           <span className={`font-semibold ${getScoreColor(answer.score, [80, 60])}`}>
@@ -280,7 +280,7 @@ function QuestionCard({
 
       {/* 问题内容 */}
       <div className="px-5 pb-2">
-        <p className="text-slate-800 dark:text-white font-medium leading-relaxed">{answer.question}</p>
+        <p className="text-on-surface font-medium leading-relaxed">{answer.question}</p>
       </div>
 
       {/* 展开内容 */}
@@ -314,23 +314,23 @@ function QuestionCard({
               {/* AI 深度评价 */}
               {answer.feedback && (
                 <div>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-2 flex items-center gap-2 font-medium">
-                    <svg className="w-4 h-4 text-primary-500" viewBox="0 0 24 24" fill="none">
+                  <p className="text-sm text-on-surface-variant mb-2 flex items-center gap-2 font-medium">
+                    <svg className="w-4 h-4 text-primary-container" viewBox="0 0 24 24" fill="none">
                       <path d="M3 3V21H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                       <path d="M18 9L12 15L9 12L3 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
                     </svg>
                     AI 深度评价
                   </p>
-                  <p className="text-slate-700 dark:text-slate-300 leading-relaxed pl-6">{answer.feedback}</p>
+                  <p className="text-on-surface leading-relaxed pl-6">{answer.feedback}</p>
                 </div>
               )}
 
               {/* 参考答案 */}
               {answer.referenceAnswer && (
                   <div
-                      className="bg-slate-50 dark:bg-slate-700/50 rounded-xl p-4 border border-slate-100 dark:border-slate-600">
-                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-3 flex items-center gap-2 font-medium">
-                    <svg className="w-4 h-4 text-primary-500" viewBox="0 0 24 24" fill="none">
+                      className="bg-surface-container-lowest rounded-xl p-4 border border-outline-variant">
+                    <p className="text-sm text-on-surface-variant mb-3 flex items-center gap-2 font-medium">
+                    <svg className="w-4 h-4 text-primary-container" viewBox="0 0 24 24" fill="none">
                       <rect x="3" y="3" width="18" height="18" rx="2" stroke="currentColor" strokeWidth="2"/>
                       <path d="M9 12H15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
                       <path d="M12 9V15" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/>
@@ -338,7 +338,7 @@ function QuestionCard({
                     参考答案
                   </p>
                     <div
-                        className="text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line">{answer.referenceAnswer}</div>
+                        className="text-on-surface leading-relaxed whitespace-pre-line">{answer.referenceAnswer}</div>
                 </div>
               )}
             </div>

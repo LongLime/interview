@@ -7,6 +7,7 @@ import type { Difficulty } from './components/UnifiedInterviewModal';
 import type { CategoryDTO } from './api/skill';
 import { Loader2 } from 'lucide-react';
 import { ROUTES } from './constants/routes';
+import { AuthProvider, useAuth } from './hooks/useAuth';
 
 // Lazy load components
 const UploadPage = lazy(() => import('./pages/UploadPage'));
@@ -23,11 +24,18 @@ const InterviewSchedulePage = lazy(() => import('./pages/InterviewSchedulePage')
 const InterviewHubPage = lazy(() => import('./pages/InterviewHubPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const InterviewDetailPanel = lazy(() => import('./components/InterviewDetailPanel'));
+const ContributionPage = lazy(() => import('./pages/ContributionPage'));
+const ContributionSubmitPage = lazy(() => import('./pages/ContributionSubmitPage'));
+const ContributionDetailPage = lazy(() => import('./pages/ContributionDetailPage'));
+const CareerFairPage = lazy(() => import('./pages/CareerFairPage'));
+const ScrapeTaskPage = lazy(() => import('./pages/ScrapeTaskPage'));
+const LoginPage = lazy(() => import('./pages/LoginPage'));
+const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
 // Loading component
 const Loading = () => (
   <div className="flex items-center justify-center min-h-[50vh]">
-    <div className="w-10 h-10 border-3 border-slate-200 border-t-primary-500 rounded-full animate-spin" />
+    <div className="w-10 h-10 border-3 border-outline-variant border-t-primary-container rounded-full animate-spin" />
   </div>
 );
 
@@ -144,8 +152,8 @@ function InterviewWrapper() {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-slate-200 border-t-primary-500 rounded-full mx-auto mb-4 animate-spin" />
-          <p className="text-slate-500">加载中...</p>
+          <div className="w-10 h-10 border-3 border-outline-variant border-t-primary-container rounded-full mx-auto mb-4 animate-spin" />
+          <p className="text-on-surface-variant">加载中...</p>
         </div>
       </div>
     );
@@ -166,9 +174,39 @@ function InterviewWrapper() {
 function App() {
   return (
     <BrowserRouter>
-      <Suspense fallback={<Loading />}>
-        <Routes>
-          <Route path="/" element={<Layout />}>
+      <AuthProvider>
+        <AppRoutes />
+      </AuthProvider>
+    </BrowserRouter>
+  );
+}
+
+function AppRoutes() {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 text-primary-container animate-spin" />
+      </div>
+    );
+  }
+
+  return (
+    <Suspense fallback={<Loading />}>
+      <Routes>
+        {/* 登录/注册页面（无需 Layout） */}
+        <Route path="/login" element={
+          user ? <Navigate to="/history" replace /> : <LoginPage />
+        } />
+        <Route path="/register" element={
+          user ? <Navigate to="/history" replace /> : <RegisterPage />
+        } />
+
+        {/* 主应用（需要登录） */}
+        <Route path="/" element={
+          user ? <Layout /> : <Navigate to="/login" replace />
+        }>
             {/* 默认重定向到简历管理页面 */}
             <Route index element={<Navigate to="/history" replace />} />
 
@@ -216,13 +254,27 @@ function App() {
 
             {/* 问答助手（知识库聊天） */}
             <Route path="knowledgebase/chat" element={<KnowledgeBaseQueryPageWrapper />} />
+
+            {/* 贡献面经列表 */}
+            <Route path="contribution" element={<ContributionPage />} />
+
+            {/* 提交面经 */}
+            <Route path="contribution/submit" element={<ContributionSubmitPage />} />
+
+            {/* 面经详情 */}
+            <Route path="contribution/:id" element={<ContributionDetailPage />} />
+
+            {/* 宣讲会列表 */}
+            <Route path="career-fair" element={<CareerFairPage />} />
+
+            {/* 定时抓取任务管理 */}
+            <Route path="career-fair/tasks" element={<ScrapeTaskPage />} />
           </Route>
 
         </Routes>
       </Suspense>
-    </BrowserRouter>
-  );
-}
+    );
+  }
 
 // 面试记录页面包装器
 function InterviewHistoryWrapper() {
@@ -275,7 +327,7 @@ function InterviewDetailPageWrapper() {
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
-        <Loader2 className="w-8 h-8 text-primary-500 animate-spin" />
+        <Loader2 className="w-8 h-8 text-primary-container animate-spin" />
       </div>
     );
   }
@@ -287,7 +339,7 @@ function InterviewDetailPageWrapper() {
           <p className="text-red-500 mb-4">{error || '面试记录不存在'}</p>
           <button
             onClick={() => navigate('/interviews')}
-            className="px-5 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+            className="px-5 py-2 bg-primary-container text-on-primary rounded-lg hover:bg-primary-container"
           >
             返回面试记录
           </button>
@@ -301,13 +353,13 @@ function InterviewDetailPageWrapper() {
       <div className="flex items-center gap-3 mb-6">
         <button
           onClick={() => navigate('/interviews')}
-          className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-lg transition-colors"
+          className="p-2 text-outline hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
         >
           <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
           </svg>
         </button>
-        <h1 className="text-xl font-bold text-slate-900 dark:text-white">
+        <h1 className="text-xl font-bold text-on-surface">
           面试详情 #{sessionId!.slice(-8)}
         </h1>
       </div>

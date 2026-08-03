@@ -206,8 +206,8 @@ export default function Interview({
     return (
       <div className="flex items-center justify-center min-h-[50vh]">
         <div className="text-center">
-          <div className="w-10 h-10 border-3 border-slate-200 border-t-primary-500 rounded-full mx-auto mb-4 animate-spin" />
-          <p className="text-slate-500 dark:text-slate-400">正在生成面试题目...</p>
+          <div className="w-10 h-10 border-3 border-outline-variant border-t-primary-container rounded-full mx-auto mb-4 animate-spin" />
+          <p className="text-on-surface-variant">正在生成面试题目...</p>
         </div>
       </div>
     );
@@ -222,13 +222,13 @@ export default function Interview({
           <div className="flex gap-3 justify-center">
             <button
               onClick={startInterview}
-              className="px-5 py-2 bg-primary-500 text-white rounded-lg hover:bg-primary-600"
+              className="px-5 py-2 bg-primary-container text-on-primary rounded-lg hover:bg-primary-container"
             >
               重试
             </button>
             <button
               onClick={onBack}
-              className="px-5 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-300 rounded-lg hover:bg-slate-300 dark:hover:bg-slate-600"
+              className="px-5 py-2 bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high"
             >
               返回
             </button>
