@@ -26,9 +26,9 @@ export interface UploadResponse {
 export interface ScoreDetail {
   contentScore: number;      // 内容完整性 (0-25)
   structureScore: number;    // 结构清晰度 (0-20)
-  skillMatchScore: number;   // 技能匹配度 (0-25)
+  skillMatchScore: number;   // 说服力 (0-40)
   expressionScore: number;   // 表达专业性 (0-15)
-  projectScore: number;      // 项目经验 (0-15)
+  projectScore: number;      // 旧 API 兼容字段，固定为 0，不参与评分
 }
 
 export interface Suggestion {

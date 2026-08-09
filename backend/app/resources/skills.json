@@ -1,0 +1,7 @@
+[
+  {"id":"java-backend","name":"Java 后端","description":"Java、Spring 与数据库","categories":[{"key":"java","label":"Java 基础","priority":"CORE"},{"key":"spring","label":"Spring","priority":"CORE"},{"key":"database","label":"数据库","priority":"NORMAL"}],"isPreset":true,"sourceJd":null,"persona":"资深 Java 后端面试官","display":{"icon":"Coffee","gradient":"from-orange-500 to-red-500","iconBg":"bg-orange-100","iconColor":"text-orange-600"}},
+  {"id":"python-backend","name":"Python 后端","description":"Python、FastAPI 与异步编程","categories":[{"key":"python","label":"Python 基础","priority":"CORE"},{"key":"framework","label":"Web 框架","priority":"CORE"},{"key":"database","label":"数据库","priority":"NORMAL"}],"isPreset":true,"sourceJd":null,"persona":"资深 Python 后端面试官"},
+  {"id":"frontend","name":"前端开发","description":"React、TypeScript 与浏览器基础","categories":[{"key":"javascript","label":"JavaScript","priority":"CORE"},{"key":"react","label":"React","priority":"CORE"},{"key":"browser","label":"浏览器","priority":"NORMAL"}],"isPreset":true,"sourceJd":null},
+  {"id":"algorithm","name":"算法","description":"数据结构与算法设计","categories":[{"key":"data-structure","label":"数据结构","priority":"CORE"},{"key":"algorithm","label":"算法设计","priority":"CORE"}],"isPreset":true,"sourceJd":null},
+  {"id":"system-design","name":"系统设计","description":"分布式系统与架构设计","categories":[{"key":"architecture","label":"架构设计","priority":"CORE"},{"key":"distributed","label":"分布式系统","priority":"CORE"}],"isPreset":true,"sourceJd":null}
+]

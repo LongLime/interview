@@ -1,9 +1,9 @@
 <div align="center">
 
-**智能 AI 面试官平台** - 基于大语言模型的简历分析、模拟面试和 RAG 知识库系统
+**智能 AI 面试官平台** - FastAPI、React、PostgreSQL 驱动的简历与面试系统
 
-[![Java](https://img.shields.io/badge/Java-21-orange?logo=openjdk)](https://openjdk.org/)
-[![Spring Boot](https://img.shields.io/badge/Spring%20Boot-4.0-green?logo=springboot)](https://spring.io/projects/spring-boot)
+[![Python](https://img.shields.io/badge/Python-3.11+-blue?logo=python)](https://python.org/)
+[![FastAPI](https://img.shields.io/badge/FastAPI-0.116+-009688?logo=fastapi)](https://fastapi.tiangolo.com/)
 [![React](https://img.shields.io/badge/React-18.3-blue?logo=react)](https://react.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-blue?logo=typescript)](https://www.typescriptlang.org/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql)](https://www.postgresql.org/)
@@ -17,6 +17,50 @@
 ## 项目介绍
 
 InterviewGuide 是一个集成了简历分析、模拟面试（文字 + 语音）、面试安排、知识库管理和多模型配置的智能面试辅助平台。系统利用大语言模型（LLM）、向量数据库、Redis Stream 异步任务和实时语音技术，为求职者、HR 和培训机构提供智能化的简历评估、面试练习、知识库问答和面试日程管理能力。
+
+> 当前主后端位于 `backend/`，使用 Python 3.11+、FastAPI、Pydantic v2 和
+> SQLAlchemy 2 async。`app/` 中的 Spring Boot 应用保留为 **legacy reference**，不会由
+> `docker-compose.yml` 构建，也不应承载新功能。
+
+## 快速启动
+
+1. 从 `.env.example` 创建根目录 `.env`，至少设置随机 `JWT_SECRET`；需要 AI 功能时设置
+   `AI_BAILIAN_API_KEY`，或在设置页配置 OpenAI 兼容 Provider。
+2. 启动完整环境：`docker compose up --build`。
+3. 本地开发只启动依赖：`docker compose up postgres redis minio createbuckets`。
+4. 启动 Python API：`cd backend && uv sync && uv run uvicorn app.main:app --reload --port 8080`。
+5. 执行测试：`cd backend && uv run pytest -q`。
+
+生产环境应将 `AUTO_CREATE_TABLES=false`，使用 `backend/alembic.ini` 和共享的
+`app.models.Base.metadata` 生成、审查并执行 Alembic 迁移。Compose 为首次体验设置了
+`AUTO_CREATE_TABLES=true`。REST 业务错误保持 `HTTP 200` 和 `{code,message,data}`；下载、SSE
+与 WebSocket 使用各自的原生协议响应。
+
+## 后端架构
+
+### Job-agent 评分与匹配端口
+
+`backend/` 已端口化 job-agent 的权威四维简历评分表（完整性 25、清晰度 20、说服力
+40、专业性 15）、完整候选人画像、风格风险、逐项档位校验、单 JD 标注匹配和持久化岗位的
+两阶段智能匹配。AI 只做档位或裁决；简历分、初筛分、详细 annotation delta、等级和 verdict
+均由 Python 常量确定性计算。结构化调用或校验失败会重试一次，失败后明确报错，不会静默计分。
+
+刻意差异与运行边界：
+
+- `parse_success=false` 强制所有简历评分为 0，这是本项目保留的安全差异。
+- 仅支持项目已配置的 OpenAI-compatible Provider；Anthropic 原生 Messages API 不在产品范围。
+- 批量初筛采用非流式结构化输出，并在整批完成后严格校验 ID 去重和完整覆盖，因此不需要源项目的 `IncrementalArrayParser`。
+- 智能匹配任务、取消信号和 SSE 通知保存在单个 FastAPI 进程内；进程重启或多 worker 不共享任务状态。已提交的 `match_results` 会保留。当前不引入 Redis 任务持久化。
+- 生产库必须执行 Alembic revision `20260809_01`；`create_all` 只用于本地测试和首次体验。
+
+| 路径 | 职责 |
+| --- | --- |
+| `backend/app/main.py` | 应用工厂、生命周期、CORS、统一异常处理、WebSocket 注册 |
+| `backend/app/models.py` | 与 legacy PostgreSQL 表兼容的 Alembic-ready SQLAlchemy metadata |
+| `backend/app/api.py` | 前端兼容 REST/SSE/WS 路由和业务编排 |
+| `backend/app/integrations.py` | OpenAI-compatible HTTP/streaming 客户端 |
+| `backend/app/scoring.py` | 确定性简历评分、岗位匹配与初筛算法 |
+| `backend/tests/` | API envelope、WebSocket 和评分表穷举测试 |
 
 ## 系统架构
 
@@ -36,20 +80,17 @@ InterviewGuide 是一个集成了简历分析、模拟面试（文字 + 语音�
 
 | 技术                  | 版本  | 说明                          |
 | --------------------- | ----- | ----------------------------- |
-| Spring Boot           | 4.0.1 | 应用框架                      |
-| Java                  | 21    | 开发语言（虚拟线程）          |
-| Spring AI             | 2.0.0-M4 | AI 集成框架、OpenAI 兼容模型接入 |
-| Spring AI Agent Utils | 0.7.0 | Skill 资源加载、Advisor 能力扩展 |
+| FastAPI               | 0.116+ | ASGI 应用框架                 |
+| Python                | 3.11+ | 开发语言                      |
+| Pydantic              | 2.x   | 严格请求/响应模型             |
+| SQLAlchemy async      | 2.x   | ORM、asyncpg 与 Alembic metadata |
+| httpx                 | 0.28+ | OpenAI 兼容 Provider 与流式调用 |
 | PostgreSQL + pgvector | 14+   | 关系数据库 + 向量存储（Compose 默认 PG16） |
-| Redis + Redisson      | 6+ / 4.0.0 | 缓存 + 消息队列（Stream） |
-| Apache Tika           | 2.9.2 | 文档解析                      |
-| iText 8               | 8.0.5 | PDF 导出                      |
-| MapStruct             | 1.6.3 | 对象映射                      |
-| SpringDoc OpenAPI     | 3.0.2 | API 接口文档                  |
-| DashScope SDK         | 2.22.7 | 语音识别/合成（Qwen3 ASR/TTS）|
-| AWS S3 SDK            | 2.29.51 | S3 兼容对象存储（MinIO/RustFS）|
-| WebSocket             | -     | 语音面试实时双向通信          |
-| Gradle                | 8.14  | 构建工具                      |
+| Redis                 | 7+    | 缓存与任务基础设施            |
+| pypdf / python-docx   | 6.x / 1.x | 文档解析                  |
+| boto3                 | 1.x   | S3 兼容对象存储（MinIO/RustFS）|
+| WebSocket / SSE       | -     | 实时双向通信与纯文本流        |
+| uv                    | 0.8+  | 依赖与运行环境管理            |
 
 技术选型常见问题解答：
 

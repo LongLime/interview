@@ -32,43 +32,36 @@ export default function AnalysisPanel({
   const radarData = useMemo(() => {
     if (!analysis) return [];
 
-    const projectScore = analysis.projectScore || 0;
     const skillMatchScore = analysis.skillMatchScore || 0;
     const contentScore = analysis.contentScore || 0;
     const structureScore = analysis.structureScore || 0;
     const expressionScore = analysis.expressionScore || 0;
 
-    const projectFullMark = 40;
-    const skillMatchFullMark = 20;
-    const contentFullMark = 15;
-    const structureFullMark = 15;
-    const expressionFullMark = 10;
+    const skillMatchFullMark = 40;
+    const contentFullMark = 25;
+    const structureFullMark = 20;
+    const expressionFullMark = 15;
 
     return [
       {
-        subject: '表达专业性',
+        subject: '专业性',
         score: expressionScore,
         fullMark: expressionFullMark
       },
       {
-        subject: '技能匹配',
+        subject: '说服力',
         score: skillMatchScore,
         fullMark: skillMatchFullMark
       },
       {
-        subject: '内容完整性',
+        subject: '完整性',
         score: contentScore,
         fullMark: contentFullMark
       },
       {
-        subject: '结构清晰度',
+        subject: '清晰度',
         score: structureScore,
         fullMark: structureFullMark
-      },
-      {
-        subject: '项目经验',
-        score: projectScore,
-        fullMark: projectFullMark
       }
     ];
   }, [analysis]);
@@ -132,8 +125,7 @@ export default function AnalysisPanel({
     analysis.summary.includes('handshake')
   );
   const isAnalysisValid = analysis &&
-    analysis.overallScore >= 10 &&
-    analysis.summary &&
+    Number.isFinite(analysis.overallScore) &&
     !hasErrorKeywords;
 
   // 判断是否为"分析中"状态
@@ -199,7 +191,6 @@ export default function AnalysisPanel({
     );
   }
 
-  const projectScore = analysis.projectScore || 0;
   const skillMatchScore = analysis.skillMatchScore || 0;
   const contentScore = analysis.contentScore || 0;
   const structureScore = analysis.structureScore || 0;
@@ -289,38 +280,30 @@ export default function AnalysisPanel({
           {/* 维度得分详情 */}
           <div className="mt-4 grid grid-cols-2 gap-3">
             <ScoreProgressBar
-              label="项目经验"
-              score={projectScore}
-              maxScore={40}
-              color="bg-purple-500"
-              delay={0.3}
-              className="col-span-2"
-            />
-            <ScoreProgressBar
-              label="技能匹配"
+              label="说服力"
               score={skillMatchScore}
-              maxScore={20}
+              maxScore={40}
               color="bg-blue-500"
               delay={0.4}
             />
             <ScoreProgressBar
-              label="内容完整性"
+              label="完整性"
               score={contentScore}
-              maxScore={15}
+              maxScore={25}
               color="bg-primary-container"
               delay={0.5}
             />
             <ScoreProgressBar
-              label="结构清晰度"
+              label="清晰度"
               score={structureScore}
-              maxScore={15}
+              maxScore={20}
               color="bg-cyan-500"
               delay={0.6}
             />
             <ScoreProgressBar
-              label="表达专业性"
+              label="专业性"
               score={expressionScore}
-              maxScore={10}
+              maxScore={15}
               color="bg-orange-500"
               delay={0.7}
             />

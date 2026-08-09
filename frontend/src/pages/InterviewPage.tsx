@@ -1,6 +1,7 @@
 import {useEffect, useRef, useState} from 'react';
 import {motion} from 'framer-motion';
 import {interviewApi} from '../api/interview';
+import {getErrorMessage} from '../api/request';
 import ConfirmDialog from '../components/ConfirmDialog';
 import InterviewChatPanel from '../components/InterviewChatPanel';
 import InterviewPageHeader from '../components/InterviewPageHeader';
@@ -89,7 +90,7 @@ export default function Interview({
 
       initSession(newSession);
     } catch (err) {
-      setError('创建面试失败，请重试');
+      setError(`创建面试失败：${getErrorMessage(err)}`);
       console.error(err);
     } finally {
       setIsCreating(false);

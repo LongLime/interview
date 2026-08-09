@@ -172,11 +172,6 @@ export default function SettingsPage() {
   const [settingDefault, setSettingDefault] = useState(false);
   const [settingEmbeddingDefault, setSettingEmbeddingDefault] = useState(false);
 
-  const pendingEmbeddingProvider = useMemo(
-    () => providers.find(provider => provider.id === pendingDefaultEmbeddingProviderId) ?? null,
-    [pendingDefaultEmbeddingProviderId, providers],
-  );
-
   const [asrConfig, setAsrConfig] = useState<AsrConfig | null>(null);
   const [ttsConfig, setTtsConfig] = useState<TtsConfig | null>(null);
   const [showVoiceModal, setShowVoiceModal] = useState<'asr' | 'tts' | null>(null);

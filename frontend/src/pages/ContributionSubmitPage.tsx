@@ -35,7 +35,6 @@ export default function ContributionSubmitPage() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitted, setSubmitted] = useState(false);
-  const [submitId, setSubmitId] = useState<number | null>(null);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = new Date().getMonth() + 1;
@@ -106,7 +105,7 @@ export default function ContributionSubmitPage() {
     setSubmitting(true);
     try {
       const validQuestions = questions.filter(q => q.questionText.trim());
-      const res = await contributionApi.submit({
+      await contributionApi.submit({
         companyId: Number(formData.companyId),
         department: formData.department,
         position: formData.position,
@@ -118,7 +117,6 @@ export default function ContributionSubmitPage() {
         contributorNickname: formData.contributorNickname,
         anonymous: formData.anonymous,
       });
-      setSubmitId(res.id);
       setSubmitted(true);
     } catch (error: any) {
       alert(error.message || '提交失败');

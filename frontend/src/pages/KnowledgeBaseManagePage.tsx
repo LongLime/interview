@@ -1,18 +1,13 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {AnimatePresence, motion} from 'framer-motion';
+import {motion} from 'framer-motion';
 import {
-  AlertCircle,
   Check,
-  CheckCircle,
   ChevronDown,
   ChevronLeft,
   ChevronRight,
-  Clock,
   Database,
   Download,
   Edit3,
-  Eye,
-  FileText,
   HardDrive,
   Loader2,
   MessageSquare,

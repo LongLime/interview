@@ -8,7 +8,6 @@ import {
   GraduationCap,
   Clock,
   Search,
-  RefreshCw,
   ExternalLink,
   Eye,
   Filter,

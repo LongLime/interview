@@ -23,3 +23,10 @@ GEMINI.md
 # Playwright MCP
 .playwright-mcp/
 scripts/venv/
+
+# Python backend
+backend/.venv/
+backend/.pytest_cache/
+backend/.ruff_cache/
+backend/**/__pycache__/
+backend/**/*.py[cod]

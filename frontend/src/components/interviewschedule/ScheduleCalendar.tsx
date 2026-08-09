@@ -122,7 +122,8 @@ export const ScheduleCalendar: React.FC<ScheduleCalendarProps> = ({
     eventTimeRangeFormat: ({ start, end }: { start: Date; end: Date }) =>
       `${dayjs(start).format('HH:mm')} - ${dayjs(end).format('HH:mm')}`,
     dayHeaderFormat: 'M月D日 ddd',
-    dayRangeHeaderFormat: 'M月D日',
+    dayRangeHeaderFormat: ({ start, end }: { start: Date; end: Date }) =>
+      `${dayjs(start).format('M月D日')} - ${dayjs(end).format('M月D日')}`,
     monthHeaderFormat: 'YYYY年M月',
   };
 

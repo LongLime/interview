@@ -353,6 +353,15 @@ export default function HistoryList({ onSelectResume }: HistoryListProps) {
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-on-surface-variant">
+                      {formatFileSize(resume.fileSize)}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-2">
+                        <StatusIcon
+                          status={resume.analyzeStatus}
+                          hasScore={resume.latestScore !== undefined}
+                        />
+                        <span className="text-sm text-on-surface-variant">
                           {getStatusText(resume.analyzeStatus, resume.latestScore !== undefined)}
                         </span>
                       </div>
@@ -386,6 +395,8 @@ export default function HistoryList({ onSelectResume }: HistoryListProps) {
                       )}
                     </td>
                     <td className="px-6 py-4 text-sm text-on-surface-variant">
+                      {formatDate(resume.uploadedAt)}
+                    </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
                         {/* 下载按钮 */}

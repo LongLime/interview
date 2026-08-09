@@ -116,7 +116,7 @@ services:
       "
 
   # =========================================
-  # 5. 后端应用服务 (Spring Boot)
+  # 5. 后端应用服务 (FastAPI / Python 3.11)
   # -----------------------------------------
   # 作用：
   #   - 提供 RESTful API
@@ -125,7 +125,7 @@ services:
   app:
     build:
       context: .
-      dockerfile: app/Dockerfile
+      dockerfile: backend/Dockerfile
     container_name: interview-app
     # 依赖管理：确保基础设施准备好后再启动后端
     depends_on:
@@ -145,6 +145,9 @@ services:
       POSTGRES_DB: interview_guide
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
+      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/interview_guide
+      AUTO_CREATE_TABLES: "true"
+      JWT_SECRET: ${JWT_SECRET:-change-this-before-production}
       
       # === Redis 连接 ===
       REDIS_HOST: redis
@@ -162,6 +165,7 @@ services:
       # 这里的变量值来自宿主机的环境变量或 .env 文件
       AI_BAILIAN_API_KEY: ${AI_BAILIAN_API_KEY}
       AI_MODEL: ${AI_MODEL:-qwen3.5-flash}
+      AI_BASE_URL: ${AI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
 
       # === 面试参数配置 ===
       APP_INTERVIEW_FOLLOW_UP_COUNT: ${APP_INTERVIEW_FOLLOW_UP_COUNT:-1}
