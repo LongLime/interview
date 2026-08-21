@@ -264,10 +264,12 @@ function AppRoutes() {
             {/* 面经详情 */}
             <Route path="contribution/:id" element={<ContributionDetailPage />} />
 
-            {/* 宣讲会列表 */}
+            {/* 招聘活动列表；保留旧路径兼容历史书签 */}
+            <Route path="recruitment-events" element={<CareerFairPage />} />
             <Route path="career-fair" element={<CareerFairPage />} />
 
-            {/* 定时抓取任务管理 */}
+            {/* 招聘活动抓取任务管理 */}
+            <Route path="recruitment-events/tasks" element={<ScrapeTaskPage />} />
             <Route path="career-fair/tasks" element={<ScrapeTaskPage />} />
           </Route>
 

@@ -6,7 +6,7 @@ import io
 import json
 import re
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, time
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -30,6 +30,7 @@ from sqlalchemy import delete, func, or_, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
+from app.career_fair_scraper import CqbysCareerFairCrawler
 from app.core import (
     BusinessError,
     Result,
@@ -85,7 +86,14 @@ from app.schemas import (
     TitleRequest,
     VoiceCreate,
 )
-from app.scoring import RawAnalysis, build_resume_analysis_prompt, compute_analysis
+from app.scoring import (
+    GRADE_VERDICT,
+    RawAnalysis,
+    build_resume_analysis_prompt,
+    compute_analysis,
+    grade_from_match_score,
+    match_score_from_annotations,
+)
 
 router = APIRouter(prefix="/api")
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -438,13 +446,20 @@ async def store_file(data: bytes, key: str, config: Settings, content_type: str 
             Body=data,
             ContentType=content_type or "application/octet-stream",
         )
-    except Exception as exc:
-        raise BusinessError(4001, f"对象存储上传失败: {exc}") from exc
-    return f"{config.app_storage_endpoint.rstrip('/')}/{config.app_storage_bucket}/{key}"
+        return f"{config.app_storage_endpoint.rstrip('/')}/{config.app_storage_bucket}/{key}"
+    except Exception:
+        local_path = (config.app_storage_local_dir / key).resolve()
+        storage_root = config.app_storage_local_dir.resolve()
+        if storage_root not in local_path.parents:
+            raise BusinessError(4001, "对象存储文件路径无效") from None
+        await asyncio.to_thread(local_path.parent.mkdir, parents=True, exist_ok=True)
+        await asyncio.to_thread(local_path.write_bytes, data)
+        return f"/api/resumes/files/{quote(key, safe='/')}"
 
 
-async def grade_resume(text: str, request: Request) -> dict:
-    config = settings(request)
+async def grade_resume(text: str, config: Settings | Request) -> dict:
+    if not isinstance(config, Settings):
+        config = settings(config)
     client = OpenAIClient(config.ai_base_url, config.ai_bailian_api_key, config.ai_model)
     schema = RawAnalysis.model_json_schema()
     prompt = build_resume_analysis_prompt(text)
@@ -454,7 +469,17 @@ async def grade_resume(text: str, request: Request) -> dict:
             raw, usage = await client.complete_json_with_usage(
                 [{"role": "user", "content": prompt}], schema
             )
-            result = compute_analysis(RawAnalysis.model_validate(raw))
+            parsed = RawAnalysis.model_validate(raw)
+            anchored = [
+                suggestion
+                for suggestion in parsed.suggestions
+                if suggestion.color in {"red", "blue"}
+                and suggestion.resume_text
+                and suggestion.resume_text in text
+            ]
+            if len(text.strip()) >= 120 and parsed.suggestions and not anchored:
+                raise ValueError("long resume analysis returned no source-anchored suggestions")
+            result = compute_analysis(parsed)
             result["metadata"] = {
                 "provider": "dashscope",
                 "model": config.ai_model,
@@ -468,7 +493,68 @@ async def grade_resume(text: str, request: Request) -> dict:
     raise BusinessError(7003, f"简历分析失败（重试后）: {message}") from last_error
 
 
-def analysis_record(resume_id: int, result: dict) -> ResumeAnalysis:
+async def analyze_resume_in_background(
+    resume_id: int,
+    text: str,
+    config: Settings,
+    session_factory: Any,
+    analysis_mode: str = "GENERAL",
+    job_title: str | None = None,
+    company_name: str | None = None,
+    jd_text: str | None = None,
+) -> None:
+    async with session_factory() as session:
+        try:
+            row = await session.get(Resume, resume_id)
+            if not row:
+                return
+            row.analyze_status, row.analyze_error = "PROCESSING", None
+            await session.commit()
+            result = await grade_resume(text, config)
+            for attempt in range(2):
+                try:
+                    async with session_factory() as result_session:
+                        result_session.add(
+                            analysis_record(
+                                resume_id,
+                                result,
+                                analysis_mode=analysis_mode,
+                                job_title=job_title,
+                                company_name=company_name,
+                                jd_text=jd_text,
+                            )
+                        )
+                        row = await result_session.get(Resume, resume_id)
+                        if row:
+                            row.analyze_status, row.analyze_error = "COMPLETED", None
+                        await result_session.commit()
+                    break
+                except Exception:
+                    if attempt == 1:
+                        raise
+        except BusinessError as exc:
+            await session.rollback()
+            row = await session.get(Resume, resume_id)
+            if row:
+                row.analyze_status, row.analyze_error = "FAILED", exc.message[:500]
+                await session.commit()
+        except Exception as exc:
+            await session.rollback()
+            row = await session.get(Resume, resume_id)
+            if row:
+                row.analyze_status, row.analyze_error = "FAILED", str(exc)[:500]
+                await session.commit()
+
+
+def analysis_record(
+    resume_id: int,
+    result: dict,
+    *,
+    analysis_mode: str = "GENERAL",
+    job_title: str | None = None,
+    company_name: str | None = None,
+    jd_text: str | None = None,
+) -> ResumeAnalysis:
     dims = result["scoring"]["dimensions"]
     metadata = result.get("metadata") or {}
     usage = metadata.get("tokenUsage") or {}
@@ -495,6 +581,10 @@ def analysis_record(resume_id: int, result: dict) -> ResumeAnalysis:
         prompt_tokens=usage.get("prompt_tokens"),
         completion_tokens=usage.get("completion_tokens"),
         total_tokens=usage.get("total_tokens"),
+        analysis_mode=analysis_mode,
+        job_title=job_title,
+        company_name=company_name,
+        jd_text=jd_text,
     )
 
 
@@ -530,13 +620,50 @@ def legacy_analysis(analysis: ResumeAnalysis | None, text: str = "") -> dict | N
                 "totalTokens": analysis.total_tokens or 0,
             },
         )
+    job_match = analysis.job_match_result_json
+    if isinstance(job_match, dict):
+        annotations = job_match.get("annotations") or []
+        normalized_score = match_score_from_annotations(annotations)
+        if normalized_score is not None:
+            normalized_grade = grade_from_match_score(normalized_score)
+            job_match = {
+                **job_match,
+                "score": normalized_score,
+                "grade": normalized_grade,
+                "verdict": GRADE_VERDICT[normalized_grade],
+            }
+    value.update(
+        analysisMode=analysis.analysis_mode,
+        jobTitle=analysis.job_title,
+        companyName=analysis.company_name,
+        jdText=analysis.jd_text,
+        jobMatchResult=job_match,
+    )
     return value
 
 
 @router.post("/resumes/upload")
 async def upload_resume(
-    request: Request, file: UploadFile = File(...), db: AsyncSession = Depends(get_db)
+    request: Request,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+    analysis_mode: str = Form("GENERAL"),
+    job_title: str | None = Form(None),
+    company_name: str | None = Form(None),
+    jd_text: str | None = Form(None),
+    db: AsyncSession = Depends(get_db),
 ):
+    analysis_mode = analysis_mode.strip().upper()
+    if analysis_mode not in {"GENERAL", "CUSTOM_JD"}:
+        raise BusinessError(400, "暂不支持该简历分析模式")
+    if analysis_mode == "CUSTOM_JD":
+        if not job_title or not job_title.strip():
+            raise BusinessError(400, "自定义 JD 分析必须填写岗位名称")
+        if not jd_text or len(jd_text.strip()) < 50:
+            raise BusinessError(400, "自定义 JD 正文至少需要 50 字")
+        job_title = job_title.strip()
+        company_name = company_name.strip() if company_name else None
+        jd_text = jd_text.strip()
     data = await file.read()
     if not data or len(data) > 10 * 1024 * 1024:
         raise BusinessError(2002, "简历不能为空且不得超过10MB")
@@ -562,31 +689,29 @@ async def upload_resume(
         storage_key=key,
         storage_url=url,
         resume_text=text,
-        analyze_status="PROCESSING",
+        analyze_status="PENDING",
     )
     db.add(resume)
     await db.flush()
-    try:
-        result = await grade_resume(text, request)
-        analysis = analysis_record(resume.id, result)
-        db.add(analysis)
-        resume.analyze_status = "COMPLETED"
-        resume.analyze_error = None
-    except BusinessError as exc:
-        resume.analyze_status, resume.analyze_error = "FAILED", exc.message[:500]
-        await db.commit()
-        raise
-    except Exception as exc:
-        resume.analyze_status, resume.analyze_error = "FAILED", str(exc)[:500]
-        await db.commit()
-        raise BusinessError(7003, f"简历分析失败: {exc}") from exc
     await db.commit()
+    background_tasks.add_task(
+        analyze_resume_in_background,
+        resume.id,
+        text,
+        settings(request),
+        request.app.state.session_factory,
+        analysis_mode,
+        job_title,
+        company_name,
+        jd_text,
+    )
     return ok(
         {
-            "analysis": legacy_analysis(analysis, text),
+            "analysis": None,
             "storage": {"fileKey": key, "fileUrl": url, "resumeId": resume.id},
             "duplicate": duplicate_content,
             "filename": display_name,
+            "status": "UPLOADED",
         }
     )
 
@@ -594,6 +719,23 @@ async def upload_resume(
 @router.get("/resumes/health")
 async def resume_health():
     return ok({"status": "UP", "service": "resume-service"})
+
+
+@router.get("/resumes/files/{storage_key:path}")
+async def read_resume_file(storage_key: str, request: Request):
+    config = settings(request)
+    local_path = (config.app_storage_local_dir / storage_key).resolve()
+    storage_root = config.app_storage_local_dir.resolve()
+    if storage_root not in local_path.parents or not local_path.is_file():
+        raise BusinessError(2001, "简历文件不存在")
+    content_type = {
+        ".pdf": "application/pdf",
+        ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        ".txt": "text/plain; charset=utf-8",
+        ".md": "text/markdown; charset=utf-8",
+    }.get(local_path.suffix.lower(), "application/octet-stream")
+    content = await asyncio.to_thread(local_path.read_bytes)
+    return Response(content=content, media_type=content_type)
 
 
 @router.get("/resumes/statistics")
@@ -730,30 +872,35 @@ async def export_resume(resume_id: int, db: Db):
 @router.delete("/resumes/{resume_id}")
 async def delete_resume(resume_id: int, db: Db):
     row = await get_resume_or_error(db, resume_id)
+    # 面试记录按模型语义保留，仅解除对简历的外键引用（模型声明 ondelete="SET NULL"，
+    # 但遗留数据库外键为 NO ACTION，需显式置空，否则删除简历会触发外键冲突）
+    await db.execute(
+        update(InterviewSession)
+        .where(InterviewSession.resume_id == resume_id)
+        .values(resume_id=None)
+    )
+    # db.delete(row) 会经 ORM relationship 级联删除 resume_analyses；
+    # match_results 由数据库 ondelete="CASCADE" 自动清理。
     await db.delete(row)
     await db.commit()
     return ok()
 
 
 @router.post("/resumes/{resume_id}/reanalyze")
-async def reanalyze(resume_id: int, db: Db, request: Request):
+async def reanalyze(
+    resume_id: int, background_tasks: BackgroundTasks, db: Db, request: Request
+):
     row = await get_resume_or_error(db, resume_id)
     row.analyze_status, row.analyze_error = "PROCESSING", None
     await db.commit()
-    try:
-        result = await grade_resume(row.resume_text or "", request)
-        db.add(analysis_record(row.id, result))
-        row.analyze_status, row.analyze_error = "COMPLETED", None
-        await db.commit()
-    except BusinessError as exc:
-        row.analyze_status, row.analyze_error = "FAILED", exc.message[:500]
-        await db.commit()
-        raise
-    except Exception as exc:
-        row.analyze_status, row.analyze_error = "FAILED", str(exc)[:500]
-        await db.commit()
-        raise BusinessError(7003, f"重新分析失败: {exc}") from exc
-    return ok()
+    background_tasks.add_task(
+        analyze_resume_in_background,
+        row.id,
+        row.resume_text or "",
+        settings(request),
+        request.app.state.session_factory,
+    )
+    return ok({"status": "PROCESSING"})
 
 
 @router.get("/resumes/{resume_id}/analyses")
@@ -2210,15 +2357,19 @@ async def search_fairs(body: dict, db: Db):
                 CareerFair.company_name.ilike(f"%{keyword}%"),
             )
         )
-    total = await db.scalar(select(func.count()).select_from(query.subquery())) or 0
-    rows = (
-        await db.scalars(query.order_by(CareerFair.fair_date).offset(page * size).limit(size))
-    ).all()
+    result = await db.execute(
+        query.add_columns(func.count().over().label("total_count"))
+        .order_by(CareerFair.fair_date)
+        .offset(page * size)
+        .limit(size)
+    )
+    page_rows = result.all()
+    total = page_rows[0].total_count if page_rows else 0
     return ok(
         {
             "content": [
                 as_dict(
-                    x,
+                    row.CareerFair,
                     "id",
                     "external_id",
                     "title",
@@ -2230,18 +2381,10 @@ async def search_fairs(body: dict, db: Db):
                     "start_time",
                     "end_time",
                     "fair_type",
-                    "industry",
-                    "description",
-                    "requirements",
                     "source_url",
-                    "poster_url",
-                    "contact_info",
                     "view_count",
-                    "is_active",
-                    "created_at",
-                    "updated_at",
                 )
-                for x in rows
+                for row in page_rows
             ],
             "totalElements": total,
             "totalPages": (total + size - 1) // size,
@@ -2327,9 +2470,105 @@ async def fair_detail(item_id: int, db: Db):
     )
 
 
+async def save_crawled_fairs(db: AsyncSession, records: list[dict]) -> tuple[int, int]:
+    new_count = 0
+    update_count = 0
+    for record in records:
+        external_id = record["external_id"]
+        row = await db.scalar(select(CareerFair).where(CareerFair.external_id == external_id))
+        fields = {
+            "title": record.get("title") or record["company_name"],
+            "company_name": record.get("company_name"),
+            "university_name": record.get("university_name"),
+            "venue": record.get("venue"),
+            "fair_date": record.get("fair_date"),
+            "start_time": record.get("start_time"),
+            "end_time": record.get("end_time"),
+            "fair_type": "宣讲会",
+            "description": record.get("description"),
+            "source_url": record["source_url"],
+            "is_active": True,
+        }
+        if fields["fair_date"]:
+            fields["fair_date"] = datetime.fromisoformat(fields["fair_date"]).date()
+        if fields["start_time"]:
+            fields["start_time"] = time.fromisoformat(fields["start_time"])
+        if fields["end_time"]:
+            fields["end_time"] = time.fromisoformat(fields["end_time"])
+        if row:
+            for key, value in fields.items():
+                setattr(row, key, value)
+            update_count += 1
+        else:
+            db.add(CareerFair(external_id=external_id, **fields))
+            new_count += 1
+    await db.commit()
+    return new_count, update_count
+
+
+async def run_scrape_task(
+    db: AsyncSession, task: ScrapeTask | None, notify: Any = None
+) -> dict[str, int]:
+    started_at = utc_now()
+    record = ScrapeRecord(
+        task_id=task.id if task else None,
+        source_url=task.source_url if task else None,
+    )
+    db.add(record)
+    if task:
+        task.status = "RUNNING"
+        task.last_run_time = started_at
+    await db.commit()
+    total_count = 0
+    new_count = 0
+    update_count = 0
+    try:
+        async for event in CqbysCareerFairCrawler().crawl():
+            if event["type"] == "data":
+                page_records = event["records"]
+                page_new, page_updated = await save_crawled_fairs(db, page_records)
+                total_count += len(page_records)
+                new_count += page_new
+                update_count += page_updated
+                if notify:
+                    message = event.get("message", "正在保存数据")
+                    await notify("scraping", message, event["page"], total_count)
+            elif event["type"] == "progress" and notify:
+                await notify("scraping", event["message"], event["page"], total_count)
+            elif event["type"] == "error":
+                raise BusinessError(11002, event["message"])
+        record.record_count = total_count
+        record.new_count = new_count
+        record.update_count = update_count
+        record.status = "SUCCESS"
+        record.completed_at = utc_now()
+        record.duration_ms = int((record.completed_at - started_at).total_seconds() * 1000)
+        if task:
+            task.status = "IDLE"
+            task.last_success_time = record.completed_at
+            task.last_record_count = total_count
+            task.total_run_count += 1
+            task.error_message = None
+        await db.commit()
+        return {"totalCount": total_count, "newCount": new_count, "updateCount": update_count}
+    except Exception as exc:
+        record.status = "FAILED"
+        record.error_message = str(exc)
+        record.completed_at = utc_now()
+        record.duration_ms = int((record.completed_at - started_at).total_seconds() * 1000)
+        if task:
+            task.status = "FAILED"
+            task.fail_count += 1
+            task.total_run_count += 1
+            task.error_message = str(exc)
+        await db.commit()
+        raise
+
+
 @router.post("/career-fair/scrape")
-async def scrape_fair():
-    raise BusinessError(11002, "抓取服务未配置")
+async def scrape_fair(db: Db):
+    result = await run_scrape_task(db, None)
+    return ok({**result, "success": True, "message": f"成功同步 {result['totalCount']} 条宣讲会"})
 
 
 def scrape_task_data(x: ScrapeTask) -> dict:
@@ -2469,8 +2708,8 @@ async def toggle_task(item_id: int, db: Db):
 
 @router.post("/scrape-task/{item_id}/execute")
 async def execute_task(item_id: int, db: Db):
-    await task_or_error(db, item_id)
-    raise BusinessError(11002, "抓取服务未配置")
+    result = await run_scrape_task(db, await task_or_error(db, item_id))
+    return ok({**result, "success": True, "message": f"成功同步 {result['totalCount']} 条宣讲会"})
 
 
 @router.get("/scrape-task/{item_id}/records")
@@ -2499,8 +2738,13 @@ async def scrape_events(item_id: int, db: Db):
 
 @router.post("/scrape-sse/execute/{item_id}")
 async def execute_sse(item_id: int, db: Db):
-    await task_or_error(db, item_id)
-    raise BusinessError(11002, "抓取服务未配置")
+    task = await task_or_error(db, item_id)
+
+    async def notify(status: str, message: str, page: int, count: int):
+        return None
+
+    result = await run_scrape_task(db, task, notify)
+    return ok({**result, "success": True, "message": f"成功同步 {result['totalCount']} 条宣讲会"})
 
 
 async def voice_websocket(websocket: WebSocket, session_id: int):

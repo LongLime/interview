@@ -139,14 +139,9 @@ services:
         condition: service_completed_successfully # 等待初始化任务完成
     environment:
       # === 数据库连接 ===
-      # 使用服务名 'postgres' 作为主机名，Docker 内部 DNS 会自动解析
-      POSTGRES_HOST: postgres
-      POSTGRES_PORT: 5432
-      POSTGRES_DB: interview_guide
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-password}
-      DATABASE_URL: postgresql+asyncpg://postgres:${POSTGRES_PASSWORD:-password}@postgres:5432/interview_guide
-      AUTO_CREATE_TABLES: "true"
+      # 与本机开发一致，使用 .env 中配置的远端 PostgreSQL。
+      DATABASE_URL: ${DATABASE_URL:?DATABASE_URL must be set in .env}
+      AUTO_CREATE_TABLES: "false"
       JWT_SECRET: ${JWT_SECRET:-change-this-before-production}
       
       # === Redis 连接 ===

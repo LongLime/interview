@@ -81,6 +81,25 @@ export interface ResumeDetail {
   interviews: InterviewItem[];
 }
 
+export interface MatchResultItem {
+  id: number;
+  resumeId: number;
+  jobTargetId: number | null;
+  company: string | null;
+  title: string | null;
+  jdText: string;
+  score: number | null;
+  grade: string | null;
+  verdict: string | null;
+  hardExcluded: boolean;
+  annotations: Array<Record<string, unknown>>;
+  interviewTips: string;
+  status: string;
+  error: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
 export interface InterviewDetail extends InterviewItem {
   evaluateStatus?: EvaluateStatus;
   evaluateError?: string;
@@ -100,6 +119,13 @@ export const historyApi = {
    */
   async getResumeDetail(id: number): Promise<ResumeDetail> {
     return request.get<ResumeDetail>(`/api/resumes/${id}/detail`);
+  },
+
+  /**
+   * 获取该简历的岗位匹配结果
+   */
+  async getMatchResults(id: number): Promise<MatchResultItem[]> {
+    return request.get<MatchResultItem[]>(`/api/match/resume/${id}`);
   },
 
   /**

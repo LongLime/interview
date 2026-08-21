@@ -1,6 +1,6 @@
 import {Link, Outlet, useLocation, useNavigate} from 'react-router-dom';
 import {motion} from 'framer-motion';
-import {BookOpen, Calendar, Database, FileStack, LogOut, Megaphone, MessageSquare, Settings, Sparkles, Users,} from 'lucide-react';
+import {BookOpen, Calendar, CalendarDays, Database, FileStack, LogOut, MessageSquare, Settings, Sparkles, Users,} from 'lucide-react';
 import {useTheme} from '../hooks/useTheme';
 import {useAuth} from '../hooks/useAuth';
 import {useState} from 'react';
@@ -76,7 +76,7 @@ export default function Layout() {
 
   const navItems: NavItem[] = [
     { id: 'resumes', path: '/history', label: '简历管理', icon: FileStack },
-    { id: 'career-fair', path: '/career-fair', label: '宣讲会', icon: Megaphone },
+    { id: 'career-fair', path: '/recruitment-events', label: '招聘活动', icon: CalendarDays },
     { id: 'interview-hub', path: '/interview-hub', label: '模拟面试', icon: Sparkles },
     { id: 'interviews', path: '/interviews', label: '面试记录', icon: Users },
     { id: 'interview-schedule', path: '/interview-schedule', label: '面试日程', icon: Calendar },
@@ -106,8 +106,11 @@ export default function Layout() {
     if (path === '/contribution') {
       return currentPath === '/contribution' || currentPath.startsWith('/contribution/');
     }
-    if (path === '/career-fair') {
-      return currentPath === '/career-fair' || currentPath.startsWith('/career-fair/');
+    if (path === '/recruitment-events') {
+      return currentPath === '/recruitment-events'
+        || currentPath.startsWith('/recruitment-events/')
+        || currentPath === '/career-fair'
+        || currentPath.startsWith('/career-fair/');
     }
     return currentPath.startsWith(path);
   };

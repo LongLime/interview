@@ -1,8 +1,8 @@
 import {useCallback, useEffect, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {AnimatePresence, motion} from 'framer-motion';
-import {historyApi, InterviewDetail, ResumeDetail} from '../api/history';
-import AnalysisPanel from '../components/AnalysisPanel';
+import {historyApi, InterviewDetail, MatchResultItem, ResumeDetail} from '../api/history';
+import ResumeAnnotationPanel from '../components/ResumeAnnotationPanel';
 import InterviewPanel from '../components/InterviewPanel';
 import InterviewDetailPanel from '../components/InterviewDetailPanel';
 import {formatDateOnly} from '../utils/date';
@@ -28,12 +28,18 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   const [selectedInterview, setSelectedInterview] = useState<InterviewDetail | null>(null);
   const [loadingInterview, setLoadingInterview] = useState(false);
   const [reanalyzing, setReanalyzing] = useState(false);
+  const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
+  const [matchResults, setMatchResults] = useState<MatchResultItem[]>([]);
 
   // 静默加载数据（用于轮询）
   const loadResumeDetailSilent = useCallback(async () => {
     try {
-      const data = await historyApi.getResumeDetail(resumeId);
+      const [data, matches] = await Promise.all([
+        historyApi.getResumeDetail(resumeId),
+        historyApi.getMatchResults(resumeId),
+      ]);
       setResume(data);
+      setMatchResults(matches);
     } catch (err) {
       console.error('加载简历详情失败', err);
     }
@@ -42,8 +48,12 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   const loadResumeDetail = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await historyApi.getResumeDetail(resumeId);
+      const [data, matches] = await Promise.all([
+        historyApi.getResumeDetail(resumeId),
+        historyApi.getMatchResults(resumeId),
+      ]);
       setResume(data);
+      setMatchResults(matches);
     } catch (err) {
       console.error('加载简历详情失败', err);
     } finally {
@@ -77,10 +87,17 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   const handleReanalyze = async () => {
     try {
       setReanalyzing(true);
+      setAnalysisNotice(null);
       await historyApi.reanalyze(resumeId);
-      await loadResumeDetailSilent();
+      setResume((current) => current ? {
+        ...current,
+        analyzeStatus: 'PROCESSING',
+        analyzeError: undefined,
+      } : current);
+      setAnalysisNotice('已提交重新分析，完成后会自动显示最新结果。');
     } catch (err) {
       console.error('重新分析失败', err);
+      setAnalysisNotice(err instanceof Error ? err.message : '重新分析失败，请稍后重试');
     } finally {
       setReanalyzing(false);
     }
@@ -220,6 +237,24 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   }
 
   const latestAnalysis = resume.analyses?.[0];
+  const latestMatch = matchResults[0];
+  const analysisForPanel = latestAnalysis || latestMatch ? {
+    ...(latestAnalysis || {}),
+    jobMatch: latestMatch,
+    suggestions: [
+      ...((latestAnalysis?.suggestions || []) as unknown[]),
+      ...((latestMatch?.annotations || []).map((annotation) => ({
+        ...annotation,
+        source: 'jd' as const,
+        issue: annotation.label || annotation.requirement_id || '岗位要求匹配项',
+        recommendation: annotation.reason,
+        priority: annotation.status === 'missing' && annotation.weight === 'hard' ? 'P0' : annotation.status === 'missing' ? 'P1' : 'P2',
+        resume_text: annotation.resume_text,
+        suggested_text: annotation.suggestion,
+        score_impact: typeof annotation.delta === 'number' ? Math.abs(annotation.delta) : undefined,
+      })) || []),
+    ],
+  } : undefined;
   const tabs = [
     { id: 'analysis' as const, label: '简历分析', icon: CheckSquare },
     { id: 'interview' as const, label: '面试记录', icon: MessageSquare, count: resume.interviews?.length || 0 },
@@ -331,15 +366,21 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
               transition={{ type: "spring", stiffness: 300, damping: 30 }}
             >
               {activeTab === 'analysis' ? (
-                <AnalysisPanel
-                  analysis={latestAnalysis}
-                  analyzeStatus={resume.analyzeStatus}
-                  analyzeError={resume.analyzeError}
-                  onExport={handleExportAnalysisPdf}
-                  exporting={exporting === 'analysis'}
-                  onReanalyze={handleReanalyze}
-                  reanalyzing={reanalyzing}
-                />
+                <>
+                  {analysisNotice && (
+                    <div className="mb-4 rounded-lg border border-primary-container/30 bg-primary-container/10 px-4 py-3 text-sm text-on-surface">
+                      {analysisNotice}
+                    </div>
+                  )}
+                  <ResumeAnnotationPanel
+                    analysis={analysisForPanel}
+                    resumeText={resume.resumeText}
+                    onExport={handleExportAnalysisPdf}
+                    exporting={exporting === 'analysis'}
+                    onReanalyze={handleReanalyze}
+                    reanalyzing={reanalyzing || resume.analyzeStatus === 'PENDING' || resume.analyzeStatus === 'PROCESSING'}
+                  />
+                </>
               ) : (
                   <InterviewPanel
                       interviews={resume.interviews || []}

@@ -30,3 +30,12 @@ backend/.pytest_cache/
 backend/.ruff_cache/
 backend/**/__pycache__/
 backend/**/*.py[cod]
+backend/pytest_out.txt
+
+# Frontend TypeScript/Vite build metadata
+frontend/*.tsbuildinfo
+frontend/vite.config.js
+frontend/vite.config.d.ts
+
+# Local object storage data
+storage/

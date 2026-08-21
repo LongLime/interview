@@ -15,6 +15,7 @@ from app.scoring import (
     StrictModel,
     grade_from_match_score,
     lookup_delta,
+    match_score_from_annotations,
     render_match_scoring_for_prompt,
 )
 
@@ -81,10 +82,8 @@ class RawDetailedMatch(StrictModel):
 def compute_detailed_match(raw: RawDetailedMatch | dict) -> dict:
     raw = raw if isinstance(raw, RawDetailedMatch) else RawDetailedMatch.model_validate(raw)
     annotations = []
-    score = 0
     for item in raw.annotations:
         delta = lookup_delta(item.kind, item.weight, item.status)
-        score += delta
         data = item.model_dump(exclude_none=True)
         data.update(
             delta=delta,
@@ -96,6 +95,7 @@ def compute_detailed_match(raw: RawDetailedMatch | dict) -> dict:
             comment=item.reason,
         )
         annotations.append(data)
+    score = match_score_from_annotations(annotations) or 0
     grade = grade_from_match_score(score)
     return {
         "score": score,

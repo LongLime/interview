@@ -30,8 +30,8 @@ export default function KnowledgeBaseUploadPage({ onUploadComplete, onBack }: Kn
     <FileUploadCard
       title="上传知识库"
       subtitle="上传文档，AI 将基于知识库内容回答您的问题"
-      accept=".pdf,.doc,.docx,.txt,.md"
-      formatHint="支持 PDF、DOCX、DOC、TXT、MD"
+      accept=".pdf,.docx,.txt,.md"
+      formatHint="支持 PDF、DOCX、TXT、MD"
       maxSizeHint="最大 50MB"
       uploading={uploading}
       uploadButtonText="开始上传"

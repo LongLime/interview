@@ -2,11 +2,13 @@ import asyncio
 from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
+from sqlalchemy import select
 
 import app.api as api_module
 import app.integrations as integrations
 from app.core import BusinessError, Settings
 from app.main import create_app
+from app.models import InterviewSession
 from app.scoring import RUBRIC
 
 
@@ -128,6 +130,45 @@ def test_resume_analysis_retries_after_invalid_coverage(monkeypatch):
     assert result["metadata"]["tokenUsage"]["total_tokens"] == 5
 
 
+def test_resume_analysis_retries_when_long_resume_has_no_anchored_suggestions(monkeypatch):
+    calls = 0
+    resume_text = "项目经历\n- 参与后端接口开发。\n" * 12
+
+    async def fake_complete(self, messages, schema):
+        nonlocal calls
+        calls += 1
+        result = strict_model_result()
+        suggestion = {
+            "related_item_id": "specificity",
+            "priority": 1,
+            "severity": "important",
+            "color": "green",
+            "dimension": "persuasiveness",
+            "item": "弱动词控制",
+            "problem": "使用弱动词",
+            "recommendation": "改为主动描述。",
+            "time_horizon": "immediate",
+            "gap_type": "resume_evidence",
+            "resume_text": None,
+            "suggested_text": "独立实现后端接口。",
+            "context_before": None,
+            "context_after": None,
+            "effort": "easy",
+        }
+        if calls == 2:
+            suggestion.update(color="blue", resume_text="参与后端接口开发。")
+        result["suggestions"] = [suggestion]
+        return result, {"prompt_tokens": 2, "completion_tokens": 3, "total_tokens": 5}
+
+    monkeypatch.setattr(integrations.OpenAIClient, "complete_json_with_usage", fake_complete)
+    config = Settings(ai_bailian_api_key="test", ai_model="test-model")
+    result = asyncio.run(api_module.grade_resume(resume_text, config))
+
+    assert calls == 2
+    assert result["suggestions"][0]["resumeText"] == "参与后端接口开发。"
+    assert result["suggestions"][0]["color"] == "blue"
+
+
 def test_same_name_and_same_content_create_numbered_independent_resumes(monkeypatch):
     async def fake_store(*_args, **_kwargs):
         return "http://storage.test/resume.txt"
@@ -209,10 +250,61 @@ def test_reanalysis_can_recover_after_failure(monkeypatch):
         recovered = client.post(f"/api/resumes/{resume_id}/reanalyze").json()
         recovered_detail = client.get(f"/api/resumes/{resume_id}/detail").json()["data"]
 
-    assert failed["code"] == 7003
+    assert failed["code"] == 200
+    assert failed["data"]["status"] == "PROCESSING"
     assert failed_detail["analyzeStatus"] == "FAILED"
     assert failed_detail["analyzeError"] == "temporary provider failure"
     assert recovered["code"] == 200
+    assert recovered["data"]["status"] == "PROCESSING"
     assert recovered_detail["analyzeStatus"] == "COMPLETED"
     assert recovered_detail["analyzeError"] is None
     assert len(recovered_detail["analyses"]) == 2
+
+
+def test_delete_resume_detaches_interview_sessions(monkeypatch):
+    async def fake_store(*_args, **_kwargs):
+        return "http://storage.test/resume.txt"
+
+    async def fake_grade(*_args, **_kwargs):
+        return analysis_result()
+
+    monkeypatch.setattr(api_module, "store_file", fake_store)
+    monkeypatch.setattr(api_module, "grade_resume", fake_grade)
+    app = create_app(Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True))
+
+    with TestClient(app) as client:
+        uploaded = client.post(
+            "/api/resumes/upload",
+            files={"file": ("resume.txt", b"resume content", "text/plain")},
+        ).json()
+        resume_id = uploaded["data"]["storage"]["resumeId"]
+
+        async def seed_interview() -> None:
+            async with app.state.session_factory() as session:
+                session.add(
+                    InterviewSession(
+                        session_id="delete-resume-session",
+                        resume_id=resume_id,
+                        total_questions=1,
+                        questions_json='[{"question":"解释事件循环","category":"Python"}]',
+                        status="IN_PROGRESS",
+                        llm_provider="dashscope",
+                    )
+                )
+                await session.commit()
+
+        client.portal.call(seed_interview)
+
+        deleted = client.delete(f"/api/resumes/{resume_id}").json()
+        assert deleted["code"] == 200
+
+        # 简历删除后，面试记录应保留，仅解除外键引用
+        async def read_resume_id() -> int | None:
+            async with app.state.session_factory() as session:
+                return await session.scalar(
+                    select(InterviewSession.resume_id).where(
+                        InterviewSession.session_id == "delete-resume-session"
+                    )
+                )
+
+        assert client.portal.call(read_resume_id) is None

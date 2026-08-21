@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import (
 
 
 def make_engine(url: str) -> AsyncEngine:
-    kwargs = {"pool_pre_ping": True}
+    kwargs = {"pool_pre_ping": True, "pool_recycle": 1800}
     if not url.startswith("sqlite"):
         kwargs.update(pool_size=10, max_overflow=20)
     return create_async_engine(url, **kwargs)

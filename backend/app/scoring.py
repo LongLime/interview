@@ -397,7 +397,7 @@ class RawSuggestion(StrictModel):
     @model_validator(mode="after")
     def valid_edit_evidence(self):
         if self.color in {"red", "blue"} and not self.resume_text:
-            raise ValueError("red/blue suggestions require exact resume_text")
+            raise ValueError("red/blue suggestions require exact resume_text evidence")
         if self.color in {"green", "blue"} and not (self.suggested_text or self.recommendation):
             raise ValueError("green/blue suggestions require suggested text")
         return self
@@ -541,6 +541,10 @@ def build_resume_analysis_prompt(resume_text: str) -> str:
 创意风格只提示 ATS 风险，不因非标准排版本身扣档。
 
 建议必须诚实、具体且可执行；不能建议用户编造。需要新增用 green，改写用 blue，删除用 red。
+对简历中已经存在的弱动词、空泛表达、格式问题、错别字或可改写项目描述，必须使用 blue 或 red，
+并在 resume_text 中逐字复制对应原文片段（含标点），不得改写或留空。此类建议必须至少给出 2 条，
+只要简历原文存在可改写的表达。green 只用于确实缺失、无法指向现有原文的内容，例如未填写电话、
+未列课程或缺少实习；不得把已有原文的问题伪装成 green。suggested_text 填写替换后的示例内容。
 能力或经历缺口可给 medium_term 建议，投递前修改用 immediate。可关注实习、项目、竞赛、奖项、证书。
 
 候选人画像必须完整输出 contact、education、skill_tags/categories、
@@ -576,6 +580,25 @@ SCREEN_SKILL_SCORE = {"strong": 12, "weak": 5, "none": -6, "na": 0}
 
 def lookup_delta(kind: str, weight: str, status: str) -> int:
     return SCORE_TABLE.get(kind, {}).get(weight, {}).get(status, 0)
+
+
+def match_score_from_annotations(annotations: list[dict]) -> int | None:
+    weighted_score = 0.0
+    total_weight = 0.0
+    weights = {"hard": 3, "must": 2, "nice": 1}
+    fulfillment = {"hit": 1.0, "partial": 0.5, "missing": 0.0}
+    valid_count = 0
+    for item in annotations:
+        weight = weights.get(item.get("weight"))
+        status = fulfillment.get(item.get("status"))
+        if weight is None or status is None:
+            continue
+        valid_count += 1
+        total_weight += weight
+        weighted_score += weight * status
+    if not valid_count or not total_weight:
+        return None
+    return round(weighted_score / total_weight * 100)
 
 
 def grade_from_match_score(score: float) -> str:
@@ -616,5 +639,6 @@ def render_match_scoring_for_prompt() -> str:
 - status：hit=完全满足；partial=部分满足；missing=完全缺失或明确不满足
 【plus】hard +18/+9/0；must +12/+6/0；nice +6/+3/0（hit/partial/missing）
 【minus】hard 0/-12/-25；must 0/-7/-14；nice 0/-2/-5（hit/partial/missing）
-总分从0开始，可为负且不设上限。只有岗位原文明示的要求才可产生 minus。
+系统会按每条要求的满足度计算0-100分：完全满足=100%，部分满足=50%，缺失或不满足=0%；
+hard/must/nice的权重分别为3/2/1。只有岗位原文明示的要求才可产生 minus。
 与岗位无关或岗位未要求的内容不要生成 annotation，既不加分也不扣分。"""

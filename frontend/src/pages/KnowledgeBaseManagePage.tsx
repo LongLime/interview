@@ -56,7 +56,7 @@ function getFileIconAndColor(filename: string) {
   return { icon: 'description', bgClass: 'bg-surface-container-high', textClass: 'text-primary' };
 }
 
-function StatusBadge({ status }: { status: VectorStatus }) {
+function StatusBadge({ status, error }: { status: VectorStatus; error?: string | null }) {
   switch (status) {
     case 'COMPLETED':
       return (
@@ -79,8 +79,8 @@ function StatusBadge({ status }: { status: VectorStatus }) {
       );
     case 'FAILED':
       return (
-        <span className="status-badge status-error">
-          解析失败
+        <span className="status-badge status-error" title={error || '知识库索引不可用'}>
+          {error?.includes('向量化') || error?.includes('pgvector') ? '索引不可用' : '处理失败'}
         </span>
       );
     default:
@@ -339,14 +339,14 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
         </div>
 
         {/* Data Table */}
-        <section className="bg-surface border border-outline-variant/30 rounded-xl soft-shadow overflow-hidden flex flex-col flex-1">
+        <section className="bg-surface border border-outline-variant/30 rounded-xl soft-shadow overflow-x-auto overflow-y-hidden flex flex-col flex-1">
           {/* List Header (Desktop only) */}
-          <div className="hidden md:grid grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-outline-variant/30 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
-            <div className="col-span-5">文件名称</div>
-            <div className="col-span-2 text-right">大小</div>
+          <div className="hidden md:grid md:min-w-[900px] grid-cols-12 gap-4 px-6 py-4 bg-surface-container-low border-b border-outline-variant/30 font-label-md text-label-md text-on-surface-variant uppercase tracking-wider">
+            <div className="col-span-4">文件名称</div>
+            <div className="col-span-1 text-right">大小</div>
             <div className="col-span-2 text-right">添加时间</div>
             <div className="col-span-2 text-center">状态</div>
-            <div className="col-span-1 text-right">操作</div>
+            <div className="col-span-3 text-right">操作</div>
           </div>
 
           {/* List Items */}
@@ -375,10 +375,10 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
                     transition={{ delay: index * 0.05 }}
-                    className="group grid grid-cols-1 md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-container transition-colors duration-150"
+                    className="group grid grid-cols-1 md:min-w-[900px] md:grid-cols-12 gap-4 px-6 py-4 items-center hover:bg-surface-container transition-colors duration-150"
                   >
                     {/* File Name */}
-                    <div className="col-span-1 md:col-span-5 flex items-center gap-3 overflow-hidden">
+                    <div className="col-span-1 md:col-span-4 flex items-center gap-3 min-w-0 overflow-hidden">
                       <div className={`w-10 h-10 rounded ${fileInfo.bgClass} flex items-center justify-center shrink-0 ${fileInfo.textClass}`}>
                         <span className="material-symbols-outlined text-[20px]">{fileInfo.icon}</span>
                       </div>
@@ -443,7 +443,7 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
                     </div>
 
                     {/* Size */}
-                    <div className="col-span-1 md:col-span-2 text-left md:text-right font-body-md text-body-md text-on-surface-variant">
+                    <div className="col-span-1 md:col-span-1 text-left md:text-right font-body-md text-body-md text-on-surface-variant">
                       <span className="md:hidden font-label-sm text-outline mr-2">大小:</span>
                       {formatFileSize(kb.fileSize)}
                     </div>
@@ -455,12 +455,17 @@ export default function KnowledgeBaseManagePage({ onUpload, onChat }: KnowledgeB
                     </div>
 
                     {/* Status */}
-                    <div className="col-span-1 md:col-span-2 flex justify-start md:justify-center items-center">
-                      <StatusBadge status={kb.vectorStatus} />
+                    <div className="col-span-1 md:col-span-2 min-w-0 flex flex-col justify-start md:justify-center items-start md:items-center gap-1">
+                      <StatusBadge status={kb.vectorStatus} error={kb.vectorError} />
+                      {kb.vectorError && (
+                        <p className="max-w-full truncate text-xs text-error" title={kb.vectorError}>
+                          {kb.vectorError}
+                        </p>
+                      )}
                     </div>
 
                     {/* Actions */}
-                    <div className="col-span-1 md:col-span-1 flex justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                    <div className="col-span-1 md:col-span-3 min-w-0 flex justify-start md:justify-end gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => handleDownload(kb)}
                         className="text-outline hover:text-primary transition-colors p-1 rounded hover:bg-surface-variant"

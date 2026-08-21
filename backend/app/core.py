@@ -50,6 +50,7 @@ class Settings(BaseSettings):
     app_storage_secret_key: str | None = None
     app_storage_bucket: str = "interview-guide"
     app_storage_region: str = "us-east-1"
+    app_storage_local_dir: Path = ROOT / "storage"
     ai_bailian_api_key: str | None = None
     ai_model: str = "qwen3.5-flash"
     ai_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"

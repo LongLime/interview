@@ -46,6 +46,13 @@ export default function InterviewDetailPanel({ interview }: InterviewDetailPanel
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
     >
+      {interview.evaluateStatus === 'FAILED' && (
+        <div className="rounded-lg border border-error/30 bg-error-container/30 px-4 py-3 text-error">
+          <p className="font-medium">面试评估失败</p>
+          <p className="mt-1 text-sm">{interview.evaluateError || 'AI 评估服务暂时不可用，请稍后重试。'}</p>
+        </div>
+      )}
+
       {/* 评分卡片 */}
         <ScoreCard
         score={interview.overallScore}

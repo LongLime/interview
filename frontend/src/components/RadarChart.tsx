@@ -68,8 +68,7 @@ export default function RadarChart({ data, height = 320, className = '' }: Radar
           <PolarRadiusAxis
             angle={90}
             domain={[0, normalizedData.length > 0 ? normalizedData[0].fullMark : 40]}
-            tick={{fill: tickColor, fontSize: 10}}
-            tickFormatter={(value) => value.toString()}
+            tick={false}
           />
           <Radar
             name="得分"

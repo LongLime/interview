@@ -32,10 +32,10 @@ export default function AnalysisPanel({
   const radarData = useMemo(() => {
     if (!analysis) return [];
 
-    const skillMatchScore = analysis.skillMatchScore || 0;
-    const contentScore = analysis.contentScore || 0;
-    const structureScore = analysis.structureScore || 0;
-    const expressionScore = analysis.expressionScore || 0;
+    const skillMatchScore = analysis.scoreDetail?.skillMatchScore || 0;
+    const contentScore = analysis.scoreDetail?.contentScore || 0;
+    const structureScore = analysis.scoreDetail?.structureScore || 0;
+    const expressionScore = analysis.scoreDetail?.expressionScore || 0;
 
     const skillMatchFullMark = 40;
     const contentFullMark = 25;
@@ -147,12 +147,12 @@ export default function AnalysisPanel({
           )}
         </div>
           <h3 className="text-xl font-semibold text-on-surface mb-2">
-          {isExplicitProcessing ? 'AI 正在分析中...' : '等待分析'}
+          {isExplicitProcessing ? '系统正在分析...' : '简历上传成功'}
         </h3>
           <p className="text-on-surface-variant mb-4">
           {isExplicitProcessing
-            ? '请稍候，AI 正在对您的简历进行深度分析'
-            : '简历已上传成功，即将开始 AI 分析'}
+            ? '请稍候，系统正在对您的简历进行深度分析'
+            : '文件已经上传成功，系统即将开始分析'}
         </p>
           <p className="text-sm text-outline">页面将自动刷新显示分析结果</p>
       </div>
@@ -191,10 +191,10 @@ export default function AnalysisPanel({
     );
   }
 
-  const skillMatchScore = analysis.skillMatchScore || 0;
-  const contentScore = analysis.contentScore || 0;
-  const structureScore = analysis.structureScore || 0;
-  const expressionScore = analysis.expressionScore || 0;
+  const skillMatchScore = analysis.scoreDetail?.skillMatchScore || 0;
+  const contentScore = analysis.scoreDetail?.contentScore || 0;
+  const structureScore = analysis.scoreDetail?.structureScore || 0;
+  const expressionScore = analysis.scoreDetail?.expressionScore || 0;
 
   return (
     <div className="space-y-6">

@@ -90,6 +90,11 @@ class ResumeAnalysis(Base):
     prompt_tokens: Mapped[int | None] = mapped_column(Integer)
     completion_tokens: Mapped[int | None] = mapped_column(Integer)
     total_tokens: Mapped[int | None] = mapped_column(Integer)
+    analysis_mode: Mapped[str] = mapped_column(String(32), default="GENERAL")
+    job_title: Mapped[str | None] = mapped_column(String(255))
+    company_name: Mapped[str | None] = mapped_column(String(255))
+    jd_text: Mapped[str | None] = mapped_column(Text)
+    job_match_result_json: Mapped[dict | None] = mapped_column(JSON)
     analyzed_at: Mapped[datetime] = mapped_column(DateTime, default=utc_now)
 
 

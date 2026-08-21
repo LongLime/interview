@@ -5,10 +5,36 @@ export const resumeApi = {
   /**
    * 上传简历并获取分析结果
    */
-  async uploadAndAnalyze(file: File): Promise<UploadResponse> {
+  async uploadAndAnalyze(file: File, options?: {
+    mode?: 'GENERAL' | 'CUSTOM_JD';
+    title?: string;
+    company?: string;
+    jdText?: string;
+  }): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
+    formData.append('analysis_mode', options?.mode || 'GENERAL');
+    if (options?.title) formData.append('job_title', options.title);
+    if (options?.company) formData.append('company_name', options.company);
+    if (options?.jdText) formData.append('jd_text', options.jdText);
     return request.upload<UploadResponse>('/api/resumes/upload', formData);
+  },
+
+  /**
+   * 根据自定义 JD 分析简历
+   */
+  async analyzeAgainstJd(payload: {
+    resumeId: number;
+    jdText: string;
+    title: string;
+    company?: string;
+  }): Promise<{ id: number; score: number | null; status: string }> {
+    return request.post('/api/match/analyze-single', {
+      resume_id: payload.resumeId,
+      jd_text: payload.jdText,
+      title: payload.title,
+      company: payload.company || undefined,
+    });
   },
 
   /**

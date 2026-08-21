@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -21,12 +21,12 @@ import {
   CheckCircle2,
   AlertCircle,
 } from 'lucide-react';
-import { careerFairApi, scrapeTaskApi, scrapeSseApi, type CareerFair, type PageResponse, type ScrapeProgress } from '../api/careerFair';
+import { careerFairApi, scrapeTaskApi, type CareerFairListItem, type PageResponse, type ScrapeProgress } from '../api/careerFair';
 import { getErrorMessage } from '../api/request';
 
 export default function CareerFairPage() {
   const navigate = useNavigate();
-  const [careerFairs, setCareerFairs] = useState<CareerFair[]>([]);
+  const [careerFairs, setCareerFairs] = useState<CareerFairListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [keyword, setKeyword] = useState('');
@@ -37,10 +37,11 @@ export default function CareerFairPage() {
   const [fairType, setFairType] = useState('');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+  const listRequestController = useRef<AbortController | null>(null);
+  const listRequestSequence = useRef(0);
 
   const [showProgress, setShowProgress] = useState(false);
   const [progressData, setProgressData] = useState<ScrapeProgress | null>(null);
-  const eventSourceRef = useRef<EventSource | null>(null);
 
   const handleSyncData = async () => {
     if (showProgress) return;
@@ -62,88 +63,68 @@ export default function CareerFairPage() {
         count: 0,
       });
 
-      eventSourceRef.current = scrapeSseApi.createEventSource(
-        task.id,
-        (data) => {
-          setProgressData(data);
-
-          if (data.status === 'completed' || data.status === 'failed') {
-            setTimeout(() => {
-              setShowProgress(false);
-              setProgressData(null);
-              if (data.status === 'completed') {
-                fetchCareerFairs(0);
-              }
-            }, 3000);
-          }
-        },
-        () => {
-          setProgressData({
-            status: 'failed',
-            message: '连接中断',
-            progress: 0,
-            page: 0,
-            count: 0,
-          });
-          setTimeout(() => {
-            setShowProgress(false);
-            setProgressData(null);
-          }, 3000);
-        }
-      );
-
-      setTimeout(() => {
-        scrapeSseApi.executeWithProgress(task.id);
-      }, 500);
-
+      const result = await scrapeTaskApi.executeTask(task.id);
+      setProgressData({
+        status: 'completed',
+        message: result.message,
+        progress: 100,
+        page: 0,
+        count: result.totalCount,
+      });
+      await fetchCareerFairs(0);
     } catch (err) {
-      setShowProgress(false);
-      alert(`同步失败: ${getErrorMessage(err)}`);
+      setProgressData({
+        status: 'failed',
+        message: `同步失败: ${getErrorMessage(err)}`,
+        progress: 0,
+        page: 0,
+        count: 0,
+      });
     }
   };
 
   const closeProgress = () => {
-    if (eventSourceRef.current) {
-      eventSourceRef.current.close();
-      eventSourceRef.current = null;
-    }
     setShowProgress(false);
     setProgressData(null);
   };
 
-  useEffect(() => {
-    return () => {
-      if (eventSourceRef.current) {
-        eventSourceRef.current.close();
-      }
-    };
-  }, []);
-
   const fetchCareerFairs = async (pageNum: number = 0) => {
+    const requestSequence = ++listRequestSequence.current;
+    listRequestController.current?.abort();
+    const controller = new AbortController();
+    listRequestController.current = controller;
     setLoading(true);
     setError('');
     try {
-      const result: PageResponse<CareerFair> = await careerFairApi.searchCareerFairs({
+      const result: PageResponse<CareerFairListItem> = await careerFairApi.searchCareerFairs({
         keyword: keyword || undefined,
         fairType: fairType || undefined,
         startDate: startDate || undefined,
         endDate: endDate || undefined,
         page: pageNum,
         size: 12,
-      });
+      }, { signal: controller.signal });
+      if (requestSequence !== listRequestSequence.current) return;
       setCareerFairs(result.content);
       setTotalPages(result.totalPages);
       setTotalElements(result.totalElements);
       setPage(result.number);
     } catch (err) {
+      if (requestSequence !== listRequestSequence.current) return;
       setError(getErrorMessage(err));
     } finally {
-      setLoading(false);
+      if (requestSequence === listRequestSequence.current) {
+        setLoading(false);
+      }
     }
   };
 
   useEffect(() => {
     fetchCareerFairs(0);
+    return () => {
+      listRequestSequence.current += 1;
+      listRequestController.current?.abort();
+    };
   }, []);
 
   const handleSearch = () => {
@@ -179,6 +160,20 @@ export default function CareerFairPage() {
   const formatTime = (timeStr: string) => {
     if (!timeStr) return '';
     return timeStr.substring(0, 5);
+  };
+
+  const getFairTypeLabel = (fairType: string) => {
+    const normalized = fairType?.toLowerCase();
+    if (normalized.includes('双选') || normalized.includes('job_fair') || normalized === 'dual') {
+      return '双选会';
+    }
+    if (normalized.includes('线上') || normalized === 'online') {
+      return '线上宣讲';
+    }
+    if (normalized.includes('线下') || normalized === 'offline') {
+      return '线下宣讲';
+    }
+    return fairType || '宣讲会';
   };
 
   const getStatusBadge = (fairDate: string) => {
@@ -345,10 +340,10 @@ export default function CareerFairPage() {
         <div>
           <h1 className="text-2xl font-bold text-on-surface flex items-center gap-3">
             <Megaphone className="w-7 h-7 text-primary" />
-            宣讲会信息
+            招聘活动
           </h1>
           <p className="text-on-surface-variant mt-1">
-            全重庆市高校宣讲会信息汇总，助你把握求职机会
+            汇集宣讲会与双选会信息，帮你更快找到合适的求职机会
           </p>
         </div>
         <div className="flex items-center gap-3">
@@ -365,7 +360,7 @@ export default function CareerFairPage() {
             {showProgress ? '同步中...' : '同步数据'}
           </button>
           <button
-            onClick={() => navigate('/career-fair/tasks')}
+            onClick={() => navigate('/recruitment-events/tasks')}
             className="flex items-center gap-2 px-4 py-2.5 bg-primary-container text-on-primary-container rounded-lg hover:bg-primary-container/80 transition-colors font-medium"
           >
             <Settings className="w-4 h-4" />
@@ -384,7 +379,7 @@ export default function CareerFairPage() {
               value={keyword}
               onChange={(e) => setKeyword(e.target.value)}
               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-              placeholder="搜索宣讲会名称、公司、学校..."
+              placeholder="搜索招聘活动、公司、学校..."
               className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
@@ -414,7 +409,7 @@ export default function CareerFairPage() {
             className="mt-4 pt-4 border-t border-outline-variant/50 grid grid-cols-3 gap-4"
           >
             <div>
-              <label className="block text-sm font-medium text-on-surface-variant mb-1.5">宣讲会类型</label>
+              <label className="block text-sm font-medium text-on-surface-variant mb-1.5">活动类型</label>
               <select
                 value={fairType}
                 onChange={(e) => setFairType(e.target.value)}
@@ -459,7 +454,7 @@ export default function CareerFairPage() {
       {/* Stats */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-on-surface-variant">
-          共 <span className="font-medium text-on-surface">{totalElements}</span> 场宣讲会
+          共 <span className="font-medium text-on-surface">{totalElements}</span> 场招聘活动
         </p>
       </div>
 
@@ -481,9 +476,9 @@ export default function CareerFairPage() {
       ) : careerFairs.length === 0 ? (
         <div className="text-center py-20 bg-surface-container-low rounded-xl border border-outline-variant/50">
           <Megaphone className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
-          <p className="text-on-surface-variant">暂无宣讲会信息</p>
+          <p className="text-on-surface-variant">暂无招聘活动</p>
           <p className="text-sm text-on-surface-variant/60 mt-1">
-            点击右上角"同步数据"按钮立即获取最新宣讲会信息
+            点击右上角“同步数据”按钮获取最新招聘活动
           </p>
         </div>
       ) : (
@@ -498,9 +493,12 @@ export default function CareerFairPage() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1 min-w-0">
-                  <h3 className="font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
-                    {fair.title}
-                  </h3>
+                  <div className="flex items-center gap-2 mb-1">
+                    <span className="shrink-0 px-2 py-0.5 rounded-md bg-primary-container text-on-primary-container text-xs font-medium">
+                      {getFairTypeLabel(fair.fairType)}
+                    </span>
+                  </div>
+                  <h3 className="font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{fair.title}</h3>
                 </div>
                 {getStatusBadge(fair.fairDate)}
               </div>

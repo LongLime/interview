@@ -10,7 +10,7 @@ from app.core import BusinessError
 
 
 class OpenAIClient:
-    def __init__(self, base_url: str, api_key: str | None, model: str, timeout: float = 90):
+    def __init__(self, base_url: str, api_key: str | None, model: str, timeout: float = 180):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
@@ -69,8 +69,12 @@ class OpenAIClient:
                 }
         except BusinessError:
             raise
+        except httpx.TimeoutException as exc:
+            message = f"AI服务调用超时（{self.timeout:.0f}秒），请稍后重试"
+            raise BusinessError(7003, message) from exc
         except (httpx.HTTPError, KeyError, ValueError, json.JSONDecodeError) as exc:
-            raise BusinessError(7003, f"AI服务调用失败: {exc}") from exc
+            detail = str(exc) or type(exc).__name__
+            raise BusinessError(7003, f"AI服务调用失败: {detail}") from exc
 
     def _supports_json_schema(self) -> bool:
         model = self.model.lower()

@@ -25,8 +25,8 @@ function AnalyzeStatusIcon({status}: { status?: string }) {
 
 function getAnalyzeStatusText(status?: string): string {
   if (status === 'FAILED') return '分析失败';
-  if (status === 'PROCESSING') return '分析中';
-  if (status === 'PENDING') return '等待分析';
+  if (status === 'PROCESSING') return '系统正在分析';
+  if (status === 'PENDING') return '上传成功，等待分析';
   if (status === 'COMPLETED') return '分析完成';
   return '待分析';
 }

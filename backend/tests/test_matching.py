@@ -50,10 +50,10 @@ def detail_response():
     }
 
 
-def test_annotation_sum_can_be_negative_and_is_not_clamped():
+def test_annotation_score_is_normalized_to_a_percentage():
     result = compute_detailed_match(detail_response())
-    assert result["score"] == -13
-    assert result["grade"] == "D"
+    assert result["score"] == 40
+    assert result["grade"] == "B+"
     assert [item["delta"] for item in result["annotations"]] == [12, -25]
 
 
@@ -63,7 +63,7 @@ def test_annotation_score_is_unbounded():
         "interview_tips": "准备项目细节。",
     }
     result = compute_detailed_match(raw)
-    assert result["score"] == 72
+    assert result["score"] == 100
     assert result["grade"] == "A"
 
 
@@ -175,7 +175,7 @@ def test_single_match_calls_provider_and_persists_job_and_result(monkeypatch):
         by_id = client.get(f"/api/match/results/{response['data']['id']}").json()["data"]
 
     assert calls == 1
-    assert response["data"]["score"] == -13
+    assert response["data"]["score"] == 40
     assert response["data"]["tokenUsage"]["totalTokens"] == 15
     assert by_resume[0]["id"] == by_id["id"]
     assert by_id["status"] == "COMPLETED"

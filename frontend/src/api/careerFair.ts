@@ -1,3 +1,4 @@
+import type { AxiosRequestConfig } from 'axios';
 import request from './request';
 
 export interface CareerFair {
@@ -23,6 +24,23 @@ export interface CareerFair {
   createdAt: string;
   updatedAt: string;
 }
+
+export type CareerFairListItem = Pick<
+  CareerFair,
+  | 'id'
+  | 'externalId'
+  | 'title'
+  | 'companyName'
+  | 'universityName'
+  | 'venue'
+  | 'address'
+  | 'fairDate'
+  | 'startTime'
+  | 'endTime'
+  | 'fairType'
+  | 'sourceUrl'
+  | 'viewCount'
+>;
 
 export interface CareerFairSearchRequest {
   keyword?: string;
@@ -99,8 +117,8 @@ export interface ScrapeProgress {
 }
 
 export const careerFairApi = {
-  searchCareerFairs: (params: CareerFairSearchRequest) =>
-    request.post<PageResponse<CareerFair>>('/api/career-fair/search', params),
+  searchCareerFairs: (params: CareerFairSearchRequest, config?: AxiosRequestConfig) =>
+    request.post<PageResponse<CareerFairListItem>>('/api/career-fair/search', params, config),
 
   getUpcomingCareerFairs: (limit: number = 10) =>
     request.get<CareerFair[]>(`/api/career-fair/upcoming?limit=${limit}`),

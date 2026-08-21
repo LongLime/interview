@@ -24,7 +24,14 @@ from app.matching import (
 )
 from app.models import JobTarget, LlmProvider, MatchResult, Resume, ResumeAnalysis
 from app.schemas import JobTargetCreate, SingleMatchRequest, SmartMatchRequest
-from app.scoring import SCREEN_HARD_EXCLUDE, CandidateProfile, compute_screen_score
+from app.scoring import (
+    GRADE_VERDICT,
+    SCREEN_HARD_EXCLUDE,
+    CandidateProfile,
+    compute_screen_score,
+    grade_from_match_score,
+    match_score_from_annotations,
+)
 
 router = APIRouter(prefix="/api")
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -93,6 +100,10 @@ async def validated_call(
 
 
 def result_data(row: MatchResult) -> dict:
+    annotations = row.annotations_json or []
+    normalized_score = match_score_from_annotations(annotations)
+    score = normalized_score if normalized_score is not None else row.score
+    grade = grade_from_match_score(score) if normalized_score is not None else row.grade
     return {
         "id": row.id,
         "resumeId": row.resume_id,
@@ -103,10 +114,10 @@ def result_data(row: MatchResult) -> dict:
         "screenDecisions": row.screen_decisions_json,
         "screenScore": row.screen_score,
         "hardExcluded": row.hard_excluded,
-        "score": row.score,
-        "grade": row.grade,
-        "verdict": row.verdict,
-        "annotations": row.annotations_json or [],
+        "score": score,
+        "grade": grade,
+        "verdict": GRADE_VERDICT[grade] if normalized_score is not None else row.verdict,
+        "annotations": annotations,
         "interviewTips": row.interview_tips or "",
         "provider": row.provider,
         "model": row.model,
@@ -237,6 +248,19 @@ async def persist_detail(
         raise
     await db.commit()
     await db.refresh(row)
+    analysis = await db.scalar(
+        select(ResumeAnalysis)
+        .where(ResumeAnalysis.resume_id == resume.id)
+        .order_by(ResumeAnalysis.analyzed_at.desc(), ResumeAnalysis.id.desc())
+        .limit(1)
+    )
+    if analysis:
+        analysis.analysis_mode = "CUSTOM_JD"
+        analysis.job_title = row.title
+        analysis.company_name = row.company
+        analysis.jd_text = row.jd_text
+        analysis.job_match_result_json = result_data(row)
+        await db.commit()
     return row
 
 
