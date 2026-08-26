@@ -397,7 +397,7 @@ class RawSuggestion(StrictModel):
     @model_validator(mode="after")
     def valid_edit_evidence(self):
         if self.color in {"red", "blue"} and not self.resume_text:
-            raise ValueError("red/blue suggestions require exact resume_text evidence")
+            object.__setattr__(self, "color", "green")
         if self.color in {"green", "blue"} and not (self.suggested_text or self.recommendation):
             raise ValueError("green/blue suggestions require suggested text")
         return self

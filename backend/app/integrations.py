@@ -108,10 +108,30 @@ class OpenAIClient:
                         if not line.startswith("data: ") or line == "data: [DONE]":
                             continue
                         data = json.loads(line[6:])
-                        chunk = data["choices"][0]["delta"].get("content")
-                        if chunk:
+                        if not isinstance(data, dict):
+                            continue
+                        error = data.get("error")
+                        if error:
+                            detail = (
+                                error.get("message", str(error))
+                                if isinstance(error, dict)
+                                else str(error)
+                            )
+                            raise BusinessError(7003, f"AI流式调用失败: {detail}")
+                        choices = data.get("choices")
+                        if not isinstance(choices, list) or not choices:
+                            continue
+                        choice = choices[0]
+                        if not isinstance(choice, dict):
+                            continue
+                        delta = choice.get("delta") or {}
+                        if not isinstance(delta, dict):
+                            continue
+                        chunk = delta.get("content")
+                        if isinstance(chunk, str) and chunk:
                             yield chunk
         except BusinessError:
             raise
-        except (httpx.HTTPError, KeyError, json.JSONDecodeError) as exc:
-            raise BusinessError(7003, f"AI流式调用失败: {exc}") from exc
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            detail = str(exc) or type(exc).__name__
+            raise BusinessError(7003, f"AI流式调用失败: {detail}") from exc

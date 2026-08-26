@@ -77,6 +77,7 @@ export default function VoiceInterviewPage() {
   const isAiSpeakingRef = useRef(false);
   const isAsrReadyRef = useRef(false);
   const isSubmittingRef = useRef(false);
+  const sessionIdRef = useRef<number | null>(null);
   const aiAudioPendingRef = useRef(false);
   const lastAiCommittedTextRef = useRef('');
   const pendingAiTextCommitRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -92,6 +93,7 @@ export default function VoiceInterviewPage() {
   useEffect(() => { aiTextRef.current = aiText; }, [aiText]);
   useEffect(() => { isAsrReadyRef.current = isAsrReady; }, [isAsrReady]);
   useEffect(() => { isSubmittingRef.current = isSubmitting; }, [isSubmitting]);
+  useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   const setAiSpeaking = useCallback((value: boolean) => {
     isAiSpeakingRef.current = value;
@@ -283,12 +285,12 @@ export default function VoiceInterviewPage() {
       }
       clearPendingAiTextCommit();
       // 用户没有主动结束/暂停时，自动暂停 session
-      const currentSessionId = sessionId;
+      const currentSessionId = sessionIdRef.current;
       if (currentSessionId && !endedByUserRef.current) {
         voiceInterviewApi.pauseSession(currentSessionId).catch(() => {});
       }
     };
-  }, [clearAudioPlaybackWatchdog, clearPendingAiTextCommit, sessionId]);
+  }, [clearAudioPlaybackWatchdog, clearPendingAiTextCommit]);
 
   // Start interview timer
   useEffect(() => {
@@ -365,23 +367,9 @@ export default function VoiceInterviewPage() {
       setIsAsrReady(false);
     },
     onMessage: () => {},
-    onSubtitle: (text: string, isFinal: boolean) => {
-      // isFinal=true 由 triggerLlmResponse 触发，表示本轮用户回答已提交到 LLM
-      if (isFinal && text.trim()) {
-        setMessages(prev => {
-          const last = prev[prev.length - 1];
-          if (last?.role === 'user' && last.text.trim() === text.trim()) {
-            return prev;
-          }
-          return [
-            ...prev,
-            { role: 'user', text: text.trim(), id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` }
-          ];
-        });
-        setUserText('');
-      } else {
-        setUserText(text);
-      }
+    onSubtitle: (text: string) => {
+      // ASR 的 final 仅表示本段语音识别完成；用户仍可编辑并点击提交。
+      setUserText(text);
     },
     onAudioResponse: (audioData: string, text: string) => {
       const hasAudio = !!(audioData && audioData.length > 0);
@@ -531,7 +519,7 @@ export default function VoiceInterviewPage() {
       const session = await voiceInterviewApi.createSession({
         skillId: config.skillId,
         difficulty: config.difficulty,
-        introEnabled: false,
+        introEnabled: true,
         techEnabled: config.techEnabled,
         projectEnabled: config.projectEnabled,
         hrEnabled: config.hrEnabled,
@@ -649,9 +637,6 @@ export default function VoiceInterviewPage() {
       setError('未连接到服务器，请刷新页面重试');
     }
   };
-
-  const handleSpeechStart = () => {};
-  const handleSpeechEnd = () => {};
 
   const handlePause = async (type: 'short' | 'long') => {
     if (!sessionId) return;
@@ -871,8 +856,6 @@ export default function VoiceInterviewPage() {
                   disabled={!isRecording && !canRecord}
                   onRecordingChange={setIsRecording}
                   onAudioData={handleAudioData}
-                  onSpeechStart={handleSpeechStart}
-                  onSpeechEnd={handleSpeechEnd}
                 />
 
                 <button

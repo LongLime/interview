@@ -4,6 +4,7 @@ import asyncio
 import hashlib
 import io
 import json
+import logging
 import re
 import uuid
 from datetime import UTC, datetime, time
@@ -94,6 +95,9 @@ from app.scoring import (
     grade_from_match_score,
     match_score_from_annotations,
 )
+from app.voice_pipeline import VoicePipeline
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/api")
 Db = Annotated[AsyncSession, Depends(get_db)]
@@ -524,14 +528,39 @@ async def analyze_resume_in_background(
                                 jd_text=jd_text,
                             )
                         )
-                        row = await result_session.get(Resume, resume_id)
-                        if row:
-                            row.analyze_status, row.analyze_error = "COMPLETED", None
                         await result_session.commit()
                     break
                 except Exception:
                     if attempt == 1:
                         raise
+            if analysis_mode == "CUSTOM_JD" and jd_text:
+                from app.match_api import persist_detail
+
+                async with session_factory() as match_session:
+                    resume = await match_session.get(Resume, resume_id)
+                    if not resume:
+                        return
+                    client = OpenAIClient(
+                        config.ai_base_url,
+                        config.ai_bailian_api_key,
+                        config.ai_model,
+                    )
+                    await persist_detail(
+                        match_session,
+                        resume,
+                        None,
+                        jd_text,
+                        company_name,
+                        job_title,
+                        client,
+                        "dashscope",
+                        config.ai_model,
+                    )
+            async with session_factory() as status_session:
+                row = await status_session.get(Resume, resume_id)
+                if row:
+                    row.analyze_status, row.analyze_error = "COMPLETED", None
+                    await status_session.commit()
         except BusinessError as exc:
             await session.rollback()
             row = await session.get(Resume, resume_id)
@@ -891,6 +920,11 @@ async def reanalyze(
     resume_id: int, background_tasks: BackgroundTasks, db: Db, request: Request
 ):
     row = await get_resume_or_error(db, resume_id)
+    latest_analysis = await db.scalar(
+        select(ResumeAnalysis)
+        .where(ResumeAnalysis.resume_id == resume_id)
+        .order_by(ResumeAnalysis.analyzed_at.desc(), ResumeAnalysis.id.desc())
+    )
     row.analyze_status, row.analyze_error = "PROCESSING", None
     await db.commit()
     background_tasks.add_task(
@@ -899,6 +933,10 @@ async def reanalyze(
         row.resume_text or "",
         settings(request),
         request.app.state.session_factory,
+        latest_analysis.analysis_mode if latest_analysis else "GENERAL",
+        latest_analysis.job_title if latest_analysis else None,
+        latest_analysis.company_name if latest_analysis else None,
+        latest_analysis.jd_text if latest_analysis else None,
     )
     return ok({"status": "PROCESSING"})
 
@@ -1239,6 +1277,118 @@ async def schedule_text_evaluation(
         request.app.state.session_factory,
         settings(request),
     )
+
+
+async def evaluate_voice_session_task(session_id: int, session_factory, config: Settings) -> None:
+    logger.info("Starting voice evaluation for session %s", session_id)
+    async with session_factory() as db:
+        row: VoiceSession | None = None
+        try:
+            row = await db.get(VoiceSession, session_id)
+            if row is None:
+                return
+            messages = (
+                await db.scalars(
+                    select(VoiceMessage)
+                    .where(VoiceMessage.session_id == session_id)
+                    .order_by(VoiceMessage.sequence_num, VoiceMessage.id)
+                )
+            ).all()
+            latest_question = ""
+            records = []
+            for message in messages:
+                if message.ai_generated_text and message.ai_generated_text.strip():
+                    latest_question = message.ai_generated_text.strip()
+                if message.user_recognized_text and message.user_recognized_text.strip():
+                    records.append(
+                        {
+                            "questionIndex": len(records),
+                            "question": latest_question or "语音面试回答",
+                            "category": "语音面试",
+                            "userAnswer": message.user_recognized_text.strip(),
+                        }
+                    )
+
+            report = None
+            if records:
+                client = await evaluation_client(db, config, row.llm_provider)
+                raw = await client.complete_json(
+                    [{"role": "user", "content": build_interview_evaluation_prompt(records)}],
+                    InterviewEvaluationResult.model_json_schema(),
+                )
+                report = InterviewEvaluationResult.model_validate(raw)
+
+            evaluations = {
+                item.question_index: item
+                for item in (report.question_evaluations if report else [])
+            }
+            answers = []
+            total_score = 0
+            for record in records:
+                evaluation = evaluations.get(record["questionIndex"])
+                score = evaluation.score if evaluation else 0
+                total_score += score
+                answers.append(
+                    {
+                        **record,
+                        "score": score,
+                        "feedback": (
+                            evaluation.feedback if evaluation else "未生成有效评估，按0分处理。"
+                        ),
+                        "referenceAnswer": evaluation.reference_answer if evaluation else "",
+                        "keyPoints": evaluation.key_points if evaluation else [],
+                    }
+                )
+
+            await db.execute(
+                delete(VoiceEvaluation).where(VoiceEvaluation.session_id == session_id)
+            )
+            db.add(
+                VoiceEvaluation(
+                    session_id=session_id,
+                    overall_score=round(total_score / len(records)) if records else 0,
+                    overall_feedback=(
+                        report.overall_feedback
+                        if report
+                        else "本次面试没有有效回答，暂时无法评估技术能力。"
+                    ),
+                    strengths_json=json.dumps(
+                        report.strengths if report else [], ensure_ascii=False
+                    ),
+                    improvements_json=json.dumps(
+                        report.improvements if report else ["建议完整回答问题后再进行评估。"],
+                        ensure_ascii=False,
+                    ),
+                    question_evaluations_json=json.dumps(answers, ensure_ascii=False),
+                    reference_answers_json=json.dumps(
+                        [
+                            {
+                                "questionIndex": answer["questionIndex"],
+                                "question": answer["question"],
+                                "referenceAnswer": answer["referenceAnswer"],
+                                "keyPoints": answer["keyPoints"],
+                            }
+                            for answer in answers
+                        ],
+                        ensure_ascii=False,
+                    ),
+                    interviewer_role=row.role_type,
+                    interview_date=row.end_time or utc_now(),
+                )
+            )
+            row.evaluate_status, row.evaluate_error, row.status = "COMPLETED", None, "COMPLETED"
+            await db.commit()
+            logger.info("Completed voice evaluation for session %s", session_id)
+        except Exception as exc:
+            await db.rollback()
+            if row is None:
+                row = await db.get(VoiceSession, session_id)
+            if row:
+                message = exc.message if isinstance(exc, BusinessError) else str(exc)
+                row.evaluate_status = "FAILED"
+                row.evaluate_error = message[:500]
+                await db.commit()
+            logger.exception("Voice evaluation failed for session %s", session_id)
 
 
 def interview_data(
@@ -2207,7 +2357,9 @@ async def create_voice(
 
 
 @router.get("/voice-interview/sessions")
-async def list_voice(db: Db, status: str | None = None, userId: str | None = None):
+async def list_voice(
+    db: Db, request: Request, status: str | None = None, userId: str | None = None
+):
     query = select(VoiceSession)
     if status:
         query = query.where(VoiceSession.status == status)
@@ -2216,6 +2368,17 @@ async def list_voice(db: Db, status: str | None = None, userId: str | None = Non
     rows = (await db.scalars(query.order_by(VoiceSession.created_at.desc()))).all()
     result = []
     for row in rows:
+        if row.status == "COMPLETED" and row.evaluate_status == "PENDING":
+            row.evaluate_status, row.evaluate_error = "PROCESSING", None
+            await db.commit()
+            if request is not None:
+                asyncio.create_task(
+                    evaluate_voice_session_task(
+                        row.id,
+                        request.app.state.session_factory,
+                        settings(request),
+                    )
+                )
         count = (
             await db.scalar(
                 select(func.count(VoiceMessage.id)).where(VoiceMessage.session_id == row.id)
@@ -2245,14 +2408,20 @@ async def get_voice(item_id: int, db: Db, request: Request):
 
 
 @router.post("/voice-interview/sessions/{item_id}/end")
-async def end_voice(item_id: int, db: Db):
+async def end_voice(item_id: int, db: Db, request: Request, background_tasks: BackgroundTasks):
     row = await voice_or_error(db, item_id)
     row.status = "COMPLETED"
     row.current_phase = "COMPLETED"
     row.end_time = utc_now()
     row.actual_duration = max(0, int((row.end_time - row.start_time).total_seconds() / 60))
-    row.evaluate_status = "PENDING"
+    row.evaluate_status, row.evaluate_error = "PROCESSING", None
     await db.commit()
+    background_tasks.add_task(
+        evaluate_voice_session_task,
+        row.id,
+        request.app.state.session_factory,
+        settings(request),
+    )
     return ok()
 
 
@@ -2329,9 +2498,20 @@ async def voice_evaluation(item_id: int, db: Db):
 
 
 @router.post("/voice-interview/sessions/{item_id}/evaluation")
-async def generate_voice_evaluation(item_id: int, db: Db):
-    await voice_or_error(db, item_id)
-    raise BusinessError(10005, "语音评估需要完整ASR会话，当前未接入")
+async def generate_voice_evaluation(
+    item_id: int, db: Db, request: Request, background_tasks: BackgroundTasks
+):
+    row = await voice_or_error(db, item_id)
+    if row.evaluate_status != "PROCESSING":
+        row.evaluate_status, row.evaluate_error = "PROCESSING", None
+        await db.commit()
+        background_tasks.add_task(
+            evaluate_voice_session_task,
+            row.id,
+            request.app.state.session_factory,
+            settings(request),
+        )
+    return ok({"evaluateStatus": "PROCESSING", "evaluateError": None, "evaluation": None})
 
 
 @router.delete("/voice-interview/sessions/{item_id}")
@@ -2748,30 +2928,55 @@ async def execute_sse(item_id: int, db: Db):
 
 
 async def voice_websocket(websocket: WebSocket, session_id: int):
-    await websocket.accept()
-    factory = websocket.app.state.session_factory
-    async with factory() as db:
-        if not await db.get(VoiceSession, session_id):
-            await websocket.send_json({"type": "error", "message": "语音面试会话不存在"})
-            await websocket.close(code=1008)
-            return
-    await websocket.send_json(
-        {"type": "control", "action": "connected", "message": "session_ready"}
-    )
+    pipeline: VoicePipeline | None = None
     try:
+        await websocket.accept()
+        factory = websocket.app.state.session_factory
+        async with factory() as db:
+            if not await db.get(VoiceSession, session_id):
+                await websocket.send_json({"type": "error", "message": "语音面试会话不存在"})
+                await websocket.close(code=1008)
+                return
+
+        async def send(message: dict[str, Any]) -> None:
+            await websocket.send_json(message)
+
+        pipeline = VoicePipeline(
+            session_id,
+            factory,
+            websocket.app.state.settings,
+            send,
+        )
+        await websocket.send_json(
+            {"type": "control", "action": "connected", "message": "session_ready"}
+        )
+        await pipeline.start()
         while True:
             message = await websocket.receive_json()
             if message.get("type") == "audio":
-                await websocket.send_json({"type": "error", "message": "实时DashScope ASR尚未接入"})
+                await pipeline.audio(message.get("data", ""))
             elif message.get("type") == "control":
-                await websocket.send_json(
-                    {
-                        "type": "control",
-                        "action": message.get("action", "unknown"),
-                        "message": "ack",
-                    }
-                )
+                action = message.get("action", "unknown")
+                if action == "submit":
+                    await pipeline.submit((message.get("data") or {}).get("text", ""))
+                elif action == "end_interview":
+                    async with factory() as db:
+                        row = await db.get(VoiceSession, session_id)
+                        if row:
+                            row.status = "COMPLETED"
+                            row.end_time = utc_now()
+                            await db.commit()
+                    await websocket.send_json(
+                        {"type": "control", "action": action, "message": "ack"}
+                    )
+                else:
+                    await websocket.send_json(
+                        {"type": "control", "action": action, "message": "ack"}
+                    )
             else:
                 await websocket.send_json({"type": "error", "message": "不支持的消息类型"})
-    except WebSocketDisconnect:
+    except (WebSocketDisconnect, RuntimeError):
         pass
+    finally:
+        if pipeline:
+            await pipeline.close()

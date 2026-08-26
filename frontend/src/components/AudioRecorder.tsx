@@ -22,8 +22,6 @@ interface AudioRecorderProps {
   disabled?: boolean;
   onRecordingChange: (isRecording: boolean) => void;
   onAudioData: (audioData: string) => void;
-  onSpeechStart?: () => void;
-  onSpeechEnd?: () => void;
 }
 
 export default function AudioRecorder({
@@ -31,8 +29,6 @@ export default function AudioRecorder({
   disabled = false,
   onRecordingChange,
   onAudioData,
-  onSpeechStart,
-  onSpeechEnd,
 }: AudioRecorderProps) {
   const [volume, setVolume] = useState(0);
   const mediaStreamRef = useRef<MediaStream | null>(null);
@@ -162,37 +158,15 @@ export default function AudioRecorder({
       }
       mediaStreamRef.current = stream;
 
-      // Step 2: Initialize VAD with shared stream
-      if (!window.vad || !window.vad.MicVAD) {
-        throw new Error('VAD library not loaded. Please refresh the page.');
-      }
-
-      const vadInstance = await window.vad.MicVAD.new({
-        getStream: async () => stream,
-        onnxWASMBasePath: 'https://cdn.jsdelivr.net/npm/onnxruntime-web@1.22.0/dist/',
-        baseAssetPath: 'https://cdn.jsdelivr.net/npm/@ricky0123/vad-web@0.0.29/dist/',
-        onSpeechStart: () => {
-          if (mountedRef.current) {
-            onSpeechStart?.();
-          }
-        },
-        onSpeechEnd: () => {
-          if (mountedRef.current) {
-            onSpeechEnd?.();
-          }
-        },
-      });
-      vadRef.current = vadInstance;
-      await vadInstance.start();
-
-      // Check if unmounted during async operation
+      // Server VAD performs turn detection, so recording must not wait for a
+      // second client-side model to load before PCM capture can begin.
       if (!mountedRef.current) {
         cleanupRecordingResources(false);
         startingRef.current = false;
         return;
       }
 
-      // Step 3: Create AudioContext
+      // Step 2: Create AudioContext
       const audioContext = new AudioContext({ sampleRate: TARGET_SAMPLE_RATE });
       if (!audioContext.audioWorklet) {
         await audioContext.close();
@@ -200,7 +174,7 @@ export default function AudioRecorder({
       }
       const source = audioContext.createMediaStreamSource(stream);
 
-      // Step 4: Create Analyser for volume monitoring
+      // Step 3: Create Analyser for volume monitoring
       const analyser = audioContext.createAnalyser();
       analyser.fftSize = 256;
       source.connect(analyser);
@@ -219,7 +193,7 @@ export default function AudioRecorder({
         setVolume(average);
       }, 100);
 
-      // Step 5: Load AudioWorklet processor
+      // Step 4: Load AudioWorklet processor
       const workletPath = '/audio-worklet/pcm-processor.js';
       await audioContext.audioWorklet.addModule(workletPath);
 
@@ -230,7 +204,7 @@ export default function AudioRecorder({
         return;
       }
 
-      // Step 6: Create AudioWorkletNode
+      // Step 5: Create AudioWorkletNode
       const workletNode = new AudioWorkletNode(audioContext, 'pcm-processor');
       workletNodeRef.current = workletNode;
       recordingActiveRef.current = true;
@@ -245,12 +219,12 @@ export default function AudioRecorder({
         onAudioData(base64);
       };
 
-      // Step 7: Create gain node to prevent echo
+      // Step 6: Create gain node to prevent echo
       const gainNode = audioContext.createGain();
       gainNode.gain.value = 0; // Mute output
       gainNodeRef.current = gainNode;
 
-      // Step 8: Connect audio processing chain
+      // Step 7: Connect audio processing chain
       source.connect(workletNode);
       workletNode.connect(gainNode);
       gainNode.connect(audioContext.destination);

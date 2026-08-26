@@ -31,7 +31,12 @@ export default function VoiceInterviewEvaluationPage() {
 
     try {
       const status = await voiceInterviewApi.getEvaluation(parseInt(sessionId));
-      handleStatusResponse(status);
+      if (status.evaluateStatus === 'PENDING') {
+        const triggered = await voiceInterviewApi.generateEvaluation(parseInt(sessionId));
+        handleStatusResponse(triggered);
+      } else {
+        handleStatusResponse(status);
+      }
     } catch {
       try {
         const status = await voiceInterviewApi.generateEvaluation(parseInt(sessionId));

@@ -1,10 +1,23 @@
+import httpx
+import pytest
 from fastapi.testclient import TestClient
 from pwdlib.hashers.bcrypt import BcryptHasher
-from sqlalchemy import update
+from sqlalchemy import select, update
 
+from app.api import evaluate_voice_session_task
 from app.core import Settings
+from app.integrations import OpenAIClient
 from app.main import create_app
-from app.models import AppUser, InterviewAnswer, InterviewSession, Resume, ResumeAnalysis
+from app.models import (
+    AppUser,
+    InterviewAnswer,
+    InterviewSession,
+    Resume,
+    ResumeAnalysis,
+    VoiceEvaluation,
+    VoiceMessage,
+    VoiceSession,
+)
 
 
 def test_health_result_envelope_and_camel_case():
@@ -168,3 +181,105 @@ def test_voice_websocket_has_stable_unsupported_asr_shape():
     with TestClient(app) as client:
         with client.websocket_connect("/ws/voice-interview/999") as socket:
             assert socket.receive_json() == {"type": "error", "message": "语音面试会话不存在"}
+
+
+def test_voice_evaluation_persists_completed_report(monkeypatch):
+    config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
+    app = create_app(config)
+
+    class FakeEvaluationClient:
+        async def complete_json(self, messages, schema):
+            return {
+                "overall_feedback": "基础概念掌握较好，建议补充线上故障排查经验。",
+                "strengths": ["能够说明数据库索引的作用"],
+                "improvements": ["补充索引失效场景"],
+                "question_evaluations": [
+                    {
+                        "question_index": 0,
+                        "score": 85,
+                        "feedback": "回答覆盖了索引加速查询的核心作用。",
+                        "reference_answer": "索引用于减少扫描数据量，并需关注回表和选择性。",
+                        "key_points": ["减少扫描", "选择性"],
+                    }
+                ],
+            }
+
+    async def fake_evaluation_client(db, task_config, provider_id):
+        return FakeEvaluationClient()
+
+    monkeypatch.setattr("app.api.evaluation_client", fake_evaluation_client)
+
+    with TestClient(app) as client:
+        async def seed_and_evaluate() -> tuple[VoiceSession, VoiceEvaluation]:
+            async with app.state.session_factory() as session:
+                voice_session = VoiceSession(
+                    id=1,
+                    role_type="Java后端工程师",
+                    status="COMPLETED",
+                    evaluate_status="PROCESSING",
+                )
+                session.add(voice_session)
+                session.add_all(
+                    [
+                        VoiceMessage(
+                            session_id=1,
+                            message_type="AI",
+                            ai_generated_text="请说明数据库索引的作用。",
+                            sequence_num=1,
+                        ),
+                        VoiceMessage(
+                            session_id=1,
+                            message_type="USER",
+                            user_recognized_text="索引可以加快查询速度。",
+                            sequence_num=2,
+                        ),
+                    ]
+                )
+                await session.commit()
+
+            await evaluate_voice_session_task(1, app.state.session_factory, config)
+
+            async with app.state.session_factory() as session:
+                completed_session = await session.get(VoiceSession, 1)
+                evaluation = await session.scalar(
+                    select(VoiceEvaluation).where(VoiceEvaluation.session_id == 1)
+                )
+                assert completed_session is not None
+                assert evaluation is not None
+                return completed_session, evaluation
+
+        voice_session, evaluation = client.portal.call(seed_and_evaluate)
+
+    assert voice_session.status == "COMPLETED"
+    assert voice_session.evaluate_status == "COMPLETED"
+    assert evaluation.overall_score == 85
+    assert "索引" in evaluation.question_evaluations_json
+
+
+@pytest.mark.asyncio
+async def test_stream_text_skips_empty_choices_events(monkeypatch):
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/chat/completions"
+        return httpx.Response(
+            200,
+            headers={"content-type": "text/event-stream"},
+            content=(
+                b'data: {"id":"chatcmpl-1","choices":[]}\n\n'
+                b'data: {"choices":[{"delta":{"content":"\\u8bf7\\u8bf4\\u660e\\u6838\\u5fc3'
+                b'\\u94fe\\u8def"}}]}\n\n'
+                b"data: [DONE]\n\n"
+            ),
+        )
+
+    transport = httpx.MockTransport(handler)
+    original_async_client = httpx.AsyncClient
+
+    def mock_async_client(*args, **kwargs):
+        kwargs["transport"] = transport
+        return original_async_client(*args, **kwargs)
+
+    monkeypatch.setattr(httpx, "AsyncClient", mock_async_client)
+    client = OpenAIClient("https://example.test/v1", "test-key", "test-model")
+    chunks = [chunk async for chunk in client.stream_text([{"role": "user", "content": "测试"}])]
+
+    assert chunks == ["请说明核心链路"]

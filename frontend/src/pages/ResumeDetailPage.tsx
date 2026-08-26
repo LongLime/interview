@@ -1,4 +1,4 @@
-import {useCallback, useEffect, useState} from 'react';
+import {useCallback, useEffect, useRef, useState} from 'react';
 import {useLocation} from 'react-router-dom';
 import {AnimatePresence, motion} from 'framer-motion';
 import {historyApi, InterviewDetail, MatchResultItem, ResumeDetail} from '../api/history';
@@ -30,6 +30,7 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   const [reanalyzing, setReanalyzing] = useState(false);
   const [analysisNotice, setAnalysisNotice] = useState<string | null>(null);
   const [matchResults, setMatchResults] = useState<MatchResultItem[]>([]);
+  const reanalysisBaselineId = useRef<number | null>(null);
 
   // 静默加载数据（用于轮询）
   const loadResumeDetailSilent = useCallback(async () => {
@@ -38,8 +39,21 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
         historyApi.getResumeDetail(resumeId),
         historyApi.getMatchResults(resumeId),
       ]);
-      setResume(data);
-      setMatchResults(matches);
+      const latestId = data.analyses?.[0]?.id ?? null;
+      const baselineId = reanalysisBaselineId.current;
+      const hasNewAnalysis = baselineId === null || (latestId !== null && latestId > baselineId);
+      const visibleData = baselineId !== null && !hasNewAnalysis && data.analyzeStatus !== 'FAILED'
+        ? { ...data, analyses: [] }
+        : data;
+      setResume(visibleData);
+      setMatchResults(baselineId !== null && !hasNewAnalysis ? [] : matches);
+      if (data.analyzeStatus === 'COMPLETED' && hasNewAnalysis) {
+        reanalysisBaselineId.current = null;
+        setAnalysisNotice('重新分析已完成，已显示最新结果。');
+      } else if (data.analyzeStatus === 'FAILED') {
+        reanalysisBaselineId.current = null;
+        setAnalysisNotice(data.analyzeError || '重新分析失败，请稍后重试');
+      }
     } catch (err) {
       console.error('加载简历详情失败', err);
     }
@@ -88,12 +102,15 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
     try {
       setReanalyzing(true);
       setAnalysisNotice(null);
+      reanalysisBaselineId.current = resume?.analyses?.[0]?.id ?? null;
       await historyApi.reanalyze(resumeId);
       setResume((current) => current ? {
         ...current,
         analyzeStatus: 'PROCESSING',
         analyzeError: undefined,
+        analyses: [],
       } : current);
+      setMatchResults([]);
       setAnalysisNotice('已提交重新分析，完成后会自动显示最新结果。');
     } catch (err) {
       console.error('重新分析失败', err);
@@ -237,7 +254,7 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
   }
 
   const latestAnalysis = resume.analyses?.[0];
-  const latestMatch = matchResults[0];
+  const latestMatch = latestAnalysis?.jobMatchResult || matchResults[0];
   const analysisForPanel = latestAnalysis || latestMatch ? {
     ...(latestAnalysis || {}),
     jobMatch: latestMatch,

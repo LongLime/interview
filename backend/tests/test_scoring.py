@@ -10,6 +10,7 @@ from app.scoring import (
     SCREEN_HARD_EXCLUDE,
     SCREEN_MAJOR_SCORE,
     SCREEN_SKILL_SCORE,
+    RawSuggestion,
     build_resume_analysis_prompt,
     compute_analysis,
     compute_screen_score,
@@ -147,6 +148,23 @@ def test_suggestions_are_normalized_for_frontend():
     assert suggestions[0]["gapType"] == "internship"
     assert suggestions[0]["timeHorizon"] == "medium_term"
     assert suggestions[1]["recommendation"]
+
+
+@pytest.mark.parametrize("color", ["red", "blue"])
+def test_edit_suggestion_without_resume_evidence_is_downgraded(color):
+    suggestion = RawSuggestion(
+        priority=1,
+        severity="important",
+        color=color,
+        dimension="persuasiveness",
+        item="量化成果",
+        problem="缺少可验证的量化结果",
+        recommendation="补充真实的规模、效率或质量指标。",
+        gap_type="resume_evidence",
+        effort="easy",
+    )
+
+    assert suggestion.color == "green"
 
 
 def test_prompt_requires_immediate_and_long_term_gap_advice():
