@@ -26,6 +26,7 @@ export interface ResumeStats {
 export interface AnalysisItem {
   id: number;
   overallScore: number;
+  grade?: string | null;
   contentScore: number;
   structureScore: number;
   skillMatchScore: number;
@@ -95,10 +96,18 @@ export interface MatchResultItem {
   hardExcluded: boolean;
   annotations: Array<Record<string, unknown>>;
   interviewTips: string;
+  gaps: MatchGap[];
   status: string;
   error: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export interface MatchGap {
+  requirement: string;
+  weight: 'hard' | 'must' | 'nice';
+  evidence: string | null;
+  suggestion: string;
 }
 
 export interface InterviewDetail extends InterviewItem {

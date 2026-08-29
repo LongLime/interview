@@ -10,11 +10,29 @@ from app.core import BusinessError
 
 
 class OpenAIClient:
-    def __init__(self, base_url: str, api_key: str | None, model: str, timeout: float = 180):
+    def __init__(
+        self,
+        base_url: str,
+        api_key: str | None,
+        model: str,
+        timeout: float = 180,
+        enable_thinking: bool = False,
+    ):
         self.base_url = base_url.rstrip("/")
         self.api_key = api_key
         self.model = model
         self.timeout = timeout
+        self.enable_thinking = enable_thinking
+
+    def _is_aliyun(self) -> bool:
+        host = self.base_url.lower()
+        return any(marker in host for marker in ("aliyun", "dashscope", "bailian"))
+
+    def _apply_aliyun_options(self, payload: dict[str, Any]) -> None:
+        # qwen3.5-flash 等推理模型默认开启思考模式，会显著拖慢结构化输出
+        # 并可能触发超时。对阿里云系 provider 显式关闭 thinking，加快响应。
+        if not self.enable_thinking and self._is_aliyun():
+            payload["enable_thinking"] = False
 
     def _headers(self) -> dict[str, str]:
         if not self.api_key:
@@ -31,6 +49,7 @@ class OpenAIClient:
         self, messages: list[dict[str, str]], schema: dict[str, Any] | None = None
     ) -> tuple[dict, dict[str, int]]:
         payload: dict[str, Any] = {"model": self.model, "messages": messages, "temperature": 0}
+        self._apply_aliyun_options(payload)
         if schema:
             if self._supports_json_schema():
                 payload["response_format"] = {
@@ -95,6 +114,7 @@ class OpenAIClient:
 
     async def stream_text(self, messages: list[dict[str, str]]) -> AsyncIterator[str]:
         payload = {"model": self.model, "messages": messages, "temperature": 0, "stream": True}
+        self._apply_aliyun_options(payload)
         try:
             async with httpx.AsyncClient(timeout=self.timeout) as client:
                 async with client.stream(
@@ -135,3 +155,34 @@ class OpenAIClient:
         except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
             detail = str(exc) or type(exc).__name__
             raise BusinessError(7003, f"AI流式调用失败: {detail}") from exc
+
+    async def embeddings(self, texts: list[str]) -> list[list[float]]:
+        """Encode ``texts`` into embeddings via the OpenAI-compatible /embeddings endpoint.
+
+        Returns one vector per input text, preserving input order. The model
+        used is ``self.model`` — callers should construct a dedicated client
+        bound to an embedding model (see ``app.embeddings.embedding_client``).
+        """
+        if not texts:
+            return []
+        payload: dict[str, Any] = {"model": self.model, "input": texts}
+        try:
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.post(
+                    f"{self.base_url}/embeddings", headers=self._headers(), json=payload
+                )
+                if response.is_error:
+                    detail = self._error_detail(response)
+                    raise BusinessError(7003, f"Embedding调用失败: {detail}")
+                body = response.json()
+                data = body.get("data") or []
+                ordered = sorted(
+                    (item for item in data if isinstance(item, dict)),
+                    key=lambda item: int(item.get("index", 0)),
+                )
+                return [item.get("embedding") or [] for item in ordered]
+        except BusinessError:
+            raise
+        except (httpx.HTTPError, KeyError, TypeError, ValueError, json.JSONDecodeError) as exc:
+            detail = str(exc) or type(exc).__name__
+            raise BusinessError(7003, f"Embedding调用失败: {detail}") from exc

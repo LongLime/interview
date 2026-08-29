@@ -96,6 +96,8 @@ DATABASE_URL=postgresql+asyncpg://postgres:password@localhost:5432/interview_gui
 AUTO_CREATE_TABLES=false
 
 AI_BAILIAN_API_KEY=
+AI_BAILIAN_WORKSPACE_ID=
+AI_BAILIAN_REALTIME_REGION=cn-beijing
 AI_MODEL=qwen3.5-flash
 AI_BASE_URL=https://dashscope.aliyuncs.com/compatible-mode/v1
 

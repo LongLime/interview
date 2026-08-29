@@ -42,6 +42,11 @@ export type CareerFairListItem = Pick<
   | 'viewCount'
 >;
 
+export interface RecommendedCareerFair extends CareerFairListItem {
+  recommendScore: number;
+  recommendReason: string;
+}
+
 export interface CareerFairSearchRequest {
   keyword?: string;
   fairType?: string;
@@ -49,6 +54,39 @@ export interface CareerFairSearchRequest {
   endDate?: string;
   page?: number;
   size?: number;
+}
+
+export interface CareerFairUserState {
+  isFavorited: boolean;
+  isScheduled: boolean;
+}
+
+export interface CareerFairUserStateRequest {
+  isFavorited: boolean;
+  isScheduled: boolean;
+}
+
+export interface CareerFairSchedule {
+  id: number;
+  careerFairId: number | null;
+  title: string;
+  startTime: string;
+  endTime: string | null;
+  location: string | null;
+  notes: string | null;
+  remindMinutes: number | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface CareerFairScheduleRequest {
+  careerFairId?: number | null;
+  title: string;
+  startTime: string;
+  endTime?: string | null;
+  location?: string | null;
+  notes?: string | null;
+  remindMinutes?: number | null;
 }
 
 export interface ScrapeTask {
@@ -125,6 +163,30 @@ export const careerFairApi = {
 
   getCareerFairById: (id: number) =>
     request.get<CareerFair>(`/api/career-fair/${id}`),
+
+  getCareerFairState: (id: number) =>
+    request.get<CareerFairUserState>(`/api/career-fair/${id}/state`),
+
+  updateCareerFairState: (id: number, data: CareerFairUserStateRequest) =>
+    request.put<CareerFairUserState>(`/api/career-fair/${id}/state`, data),
+
+  getFavoriteCareerFairs: (params: { keyword?: string; page?: number; size?: number }, config?: AxiosRequestConfig) =>
+    request.get<PageResponse<CareerFairListItem>>('/api/career-fair/favorites', { ...config, params }),
+
+  getRecommendedCareerFairs: (data: { keyword?: string; limit?: number }, config?: AxiosRequestConfig) =>
+    request.post<RecommendedCareerFair[]>('/api/career-fair/recommendations', data, config),
+
+  getCareerFairSchedules: (params?: { startDate?: string; endDate?: string }) =>
+    request.get<CareerFairSchedule[]>('/api/career-fair/schedules', { params }),
+
+  createCareerFairSchedule: (data: CareerFairScheduleRequest) =>
+    request.post<CareerFairSchedule>('/api/career-fair/schedules', data),
+
+  updateCareerFairSchedule: (id: number, data: CareerFairScheduleRequest) =>
+    request.put<CareerFairSchedule>(`/api/career-fair/schedules/${id}`, data),
+
+  deleteCareerFairSchedule: (id: number) =>
+    request.delete<void>(`/api/career-fair/schedules/${id}`),
 
   scrapeCareerFairs: (url: string, taskId?: number) =>
     request.post<ScrapeResult>(`/api/career-fair/scrape?url=${encodeURIComponent(url)}${taskId ? `&taskId=${taskId}` : ''}`),

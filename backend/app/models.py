@@ -128,6 +128,7 @@ class MatchResult(Base):
     verdict: Mapped[str | None] = mapped_column(String(64))
     annotations_json: Mapped[list | None] = mapped_column(JSON)
     interview_tips: Mapped[str | None] = mapped_column(Text)
+    gaps_json: Mapped[list | None] = mapped_column(JSON)
     provider: Mapped[str | None] = mapped_column(String(64))
     model: Mapped[str | None] = mapped_column(String(128))
     status: Mapped[str] = mapped_column(String(32), default="PENDING")
@@ -346,6 +347,32 @@ class CareerFair(Base, Timestamps):
     contact_info: Mapped[str | None] = mapped_column(String)
     view_count: Mapped[int] = mapped_column(Integer, default=0)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+
+
+class CareerFairUserState(Base, Timestamps):
+    __tablename__ = "career_fair_user_state"
+    __table_args__ = (UniqueConstraint("user_id", "career_fair_id"),)
+    id: Mapped[int] = mapped_column(PRIMARY_KEY_TYPE, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    career_fair_id: Mapped[int | None] = mapped_column(
+        ForeignKey("career_fair.id", ondelete="CASCADE"), nullable=True
+    )
+    is_favorited: Mapped[bool] = mapped_column(Boolean, default=False)
+    is_scheduled: Mapped[bool] = mapped_column(Boolean, default=False)
+
+
+class CareerFairSchedule(Base, Timestamps):
+    __tablename__ = "career_fair_schedule"
+    __table_args__ = (UniqueConstraint("user_id", "career_fair_id"),)
+    id: Mapped[int] = mapped_column(PRIMARY_KEY_TYPE, primary_key=True, autoincrement=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("app_user.id", ondelete="CASCADE"))
+    career_fair_id: Mapped[int] = mapped_column(ForeignKey("career_fair.id", ondelete="CASCADE"))
+    title: Mapped[str] = mapped_column(String)
+    start_time: Mapped[datetime] = mapped_column(DateTime)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime)
+    location: Mapped[str | None] = mapped_column(String)
+    notes: Mapped[str | None] = mapped_column(Text)
+    remind_minutes: Mapped[int | None] = mapped_column(Integer, default=60)
 
 
 class ScrapeTask(Base, Timestamps):

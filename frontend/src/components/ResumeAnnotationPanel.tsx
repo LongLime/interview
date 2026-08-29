@@ -1,5 +1,8 @@
 import { useLayoutEffect, useMemo, useRef, useState } from 'react';
 import { AlertTriangle, CheckCircle2, Download, Pencil, Plus, RefreshCw, Trash2 } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { gradeFromScore } from '../utils/score';
 
 interface AnnotationSuggestion {
   category?: string;
@@ -94,7 +97,53 @@ function effortLabel(effort?: string) {
   return effort;
 }
 
-function SuggestionCard({ suggestion, anchored = false }: { suggestion: AnnotationSuggestion; anchored?: boolean }) {
+interface MatchGap {
+  requirement: string;
+  weight: 'hard' | 'must' | 'nice';
+  evidence: string | null;
+  suggestion: string;
+}
+
+interface JobMatchData {
+  company?: string | null;
+  title?: string | null;
+  score?: number | null;
+  grade?: string | null;
+  verdict?: string | null;
+  hardExcluded?: boolean;
+  interviewTips?: string | null;
+  interview_tips?: string | null;
+  gaps?: MatchGap[] | null;
+}
+
+const gapWeightLabels: Record<MatchGap['weight'], string> = {
+  hard: '硬性门槛',
+  must: '核心能力',
+  nice: '加分项',
+};
+
+function gapWeightClass(weight: MatchGap['weight']) {
+  if (weight === 'hard') return 'border-red-200 bg-red-50 text-red-700';
+  if (weight === 'must') return 'border-orange-200 bg-orange-50 text-orange-700';
+  return 'border-yellow-200 bg-yellow-50 text-yellow-700';
+}
+
+function GapCard({ gap }: { gap: MatchGap }) {
+  return (
+    <div className="rounded-xl border border-outline-variant bg-surface shadow-sm transition-colors hover:bg-surface-container-low">
+      <div className="flex items-start justify-between gap-3 border-b border-outline-variant px-4 py-3">
+        <span className="text-sm font-semibold text-on-surface">{gap.requirement}</span>
+        <span className={`shrink-0 rounded-full border px-2 py-1 text-xs font-medium ${gapWeightClass(gap.weight)}`}>{gapWeightLabels[gap.weight] || gap.weight}</span>
+      </div>
+      <div className="space-y-2 px-4 py-3">
+        {gap.evidence && <p className="text-xs leading-5 text-on-surface-variant"><span className="font-medium text-on-surface">现状：</span>{gap.evidence}</p>}
+        <p className="text-xs leading-5 text-on-surface-variant"><span className="font-medium text-on-surface">建议：</span>{gap.suggestion}</p>
+      </div>
+    </div>
+  );
+}
+
+function SuggestionCard({ suggestion }: { suggestion: AnnotationSuggestion }) {
   const mode = modeMeta(getMode(suggestion));
   const Icon = mode.icon;
   const title = suggestion.issue || suggestion.problem || suggestion.category || '优化建议';
@@ -103,9 +152,9 @@ function SuggestionCard({ suggestion, anchored = false }: { suggestion: Annotati
     <div className="rounded-xl border border-outline-variant bg-surface shadow-sm transition-colors hover:bg-surface-container-low">
       <div className="flex items-start justify-between gap-3 border-b border-outline-variant px-4 py-3">
         <div className="flex min-w-0 items-center gap-2">
-          {anchored && <span className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium" style={{ color: mode.color, borderColor: mode.color }}>
+          <span className="inline-flex shrink-0 items-center gap-1 rounded-full border px-2 py-1 text-xs font-medium" style={{ color: mode.color, borderColor: mode.color }}>
             <Icon className="h-3.5 w-3.5" />{mode.label}
-          </span>}
+          </span>
           <span className="truncate text-sm font-semibold text-on-surface">{title}</span>
         </div>
         <div className="flex shrink-0 items-center gap-1">
@@ -157,7 +206,9 @@ export default function ResumeAnnotationPanel({ resumeText, analysis, onExport, 
   }, [positioned, resumeText]);
 
   const scoreDetail = analysis?.scoreDetail || {};
-  const jobMatch = analysis?.jobMatch;
+  const jobMatch = analysis?.jobMatch as JobMatchData | undefined;
+  const interviewTips = jobMatch?.interviewTips || jobMatch?.interview_tips || '';
+  const gaps = Array.isArray(jobMatch?.gaps) ? jobMatch.gaps : [];
   const dimensions = [
     ['完整性', scoreDetail.contentScore, 25],
     ['清晰度', scoreDetail.structureScore, 20],
@@ -167,7 +218,7 @@ export default function ResumeAnnotationPanel({ resumeText, analysis, onExport, 
   const hasJobData = allSuggestions.some((suggestion) => suggestion.source === 'jd') || analysis?.jobMatch;
   const scoreSummary = activeTab === 'resume'
     ? {
-        grade: analysis?.grade || 'B+',
+        grade: analysis?.grade || gradeFromScore(analysis?.overallScore ?? 0),
         score: analysis?.overallScore || 0,
         label: '综合评分',
         metrics: dimensions.map(([label, score, max]) => ({ label, score: score || 0, max })),
@@ -268,6 +319,8 @@ export default function ResumeAnnotationPanel({ resumeText, analysis, onExport, 
       ) : (
         <>
           {activeTab === 'jd' && jobMatch && <div className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm leading-6 text-on-surface"><span className="font-semibold">目标岗位：</span>{jobMatch.company ? `${jobMatch.company} · ` : ''}{jobMatch.title || '未命名岗位'}</div>}
+          {activeTab === 'jd' && interviewTips && <div className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3"><p className="mb-1 text-sm font-semibold text-on-surface">面试准备建议</p><div className="prose prose-sm dark:prose-invert max-w-none"><ReactMarkdown remarkPlugins={[remarkGfm]}>{interviewTips}</ReactMarkdown></div></div>}
+          {activeTab === 'jd' && gaps.length > 0 && <div className="space-y-3"><p className="text-sm font-medium text-on-surface-variant">与理想候选人的差距</p><div className="grid gap-3 md:grid-cols-2">{gaps.map((gap, index) => <GapCard key={`${gap.requirement}-${index}`} gap={gap} />)}</div></div>}
           {activeTab === 'resume' && analysis?.summary && <div className="rounded-xl border border-outline-variant bg-surface-container-lowest px-4 py-3 text-sm leading-6 text-on-surface">{analysis.summary}</div>}
           <div ref={rootRef} className="relative" style={{ minHeight: annotationLayout.height || undefined }}>
             <svg className="pointer-events-none absolute inset-0 hidden h-full w-full lg:block" aria-hidden="true">
@@ -276,9 +329,9 @@ export default function ResumeAnnotationPanel({ resumeText, analysis, onExport, 
             <div ref={textRef} className="whitespace-pre-wrap break-words rounded-xl border border-outline-variant bg-surface p-5 text-sm leading-8 text-on-surface lg:mr-[384px]">
               {marks.length ? marks.map((mark, index) => mark.suggestion ? <mark key={index} ref={(element) => { if (element !== null && mark.index !== undefined) markRefs.current.set(mark.index, element); }} className="rounded-sm border-b-2 px-0.5" style={{ borderColor: modeMeta(getMode(mark.suggestion)).color, backgroundColor: modeMeta(getMode(mark.suggestion)).tint }}>{mark.text}</mark> : <span key={index}>{mark.text}</span>) : resumeText}
             </div>
-            <div className="mt-4 space-y-3 lg:hidden">{positioned.map(({ suggestion, index }) => <SuggestionCard key={`${suggestion.issue}-${index}`} suggestion={suggestion} anchored />)}</div>
+            <div className="mt-4 space-y-3 lg:hidden">{positioned.map(({ suggestion, index }) => <SuggestionCard key={`${suggestion.issue}-${index}`} suggestion={suggestion} />)}</div>
             <div className="absolute right-0 top-0 hidden w-[360px] lg:block">
-              {positioned.map(({ suggestion, index }) => <div key={`${suggestion.issue}-${index}`} ref={(element) => { if (element !== null) cardRefs.current.set(index, element); }} className="absolute left-0 w-full" style={{ top: annotationLayout.tops[index] || 0 }}><SuggestionCard suggestion={suggestion} anchored /></div>)}
+              {positioned.map(({ suggestion, index }) => <div key={`${suggestion.issue}-${index}`} ref={(element) => { if (element !== null) cardRefs.current.set(index, element); }} className="absolute left-0 w-full" style={{ top: annotationLayout.tops[index] || 0 }}><SuggestionCard suggestion={suggestion} /></div>)}
             </div>
           </div>
           {unmatched.length > 0 && <div className="border-t border-outline-variant pt-4"><p className="mb-3 text-sm font-medium text-on-surface-variant">以下建议针对整体或缺失内容，无法定位到具体原文：</p><div className="grid gap-3 md:grid-cols-2">{unmatched.map((suggestion, index) => <SuggestionCard key={`${suggestion.issue}-${index}`} suggestion={suggestion} />)}</div></div>}

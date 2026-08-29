@@ -23,7 +23,13 @@
 **配置变量**:
 ```bash
 AI_BAILIAN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+AI_BAILIAN_WORKSPACE_ID=your-workspace-id
+AI_BAILIAN_REALTIME_REGION=cn-beijing
 ```
+
+`AI_BAILIAN_WORKSPACE_ID` 是 API Key 所关联的百炼业务空间 ID，语音面试的
+Realtime WebRTC 接入必须配置。地域可选 `cn-beijing` 或 `ap-southeast-1`，并须与
+API Key 所属地域一致。
 
 **费用**:
 - 新用户有免费额度

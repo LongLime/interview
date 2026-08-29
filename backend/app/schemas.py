@@ -148,6 +148,16 @@ class VoiceCreate(ApiModel):
     llm_provider: str | None = None
 
 
+class WebrtcSdpRequest(ApiModel):
+    offer_sdp: str = Field(min_length=1)
+
+
+class VoiceMessageCreate(ApiModel):
+    message_type: str = Field(min_length=1)
+    user_text: str | None = None
+    ai_text: str | None = None
+
+
 class JobTargetCreate(ApiModel):
     company: str | None = Field(default=None, max_length=255)
     title: str = Field(min_length=1, max_length=255)
@@ -172,6 +182,8 @@ class SmartMatchRequest(ApiModel):
     batch_size: int = Field(default=50, ge=1, le=100)
     concurrency: int = Field(default=3, ge=1, le=10)
     provider: str | None = None
+    use_embedding: bool = True
+    embedding_cap: int | None = Field(default=None, ge=1)
 
 
 class ScrapeTaskRequest(ApiModel):
@@ -179,3 +191,18 @@ class ScrapeTaskRequest(ApiModel):
     source_url: HttpUrl
     description: str | None = None
     cron_expression: str | None = None
+
+
+class CareerFairUserStateRequest(ApiModel):
+    is_favorited: bool
+    is_scheduled: bool
+
+
+class CareerFairScheduleRequest(ApiModel):
+    career_fair_id: int | None = None
+    title: str = Field(min_length=1, max_length=255)
+    start_time: datetime
+    end_time: datetime | None = None
+    location: str | None = Field(default=None, max_length=255)
+    notes: str | None = None
+    remind_minutes: int | None = Field(default=60, ge=0, le=10080)

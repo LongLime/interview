@@ -84,3 +84,14 @@ export function getScoreTextColor(
   if (score >= thresholds[1]) return 'text-amber-500';
   return 'text-red-500';
 }
+
+/**
+ * 根据简历分析分数计算字母评级（与后端 grade_from_score 一致）
+ */
+export function gradeFromScore(score: number): string {
+  if (score >= 90) return 'A';
+  if (score >= 80) return 'B+';
+  if (score >= 70) return 'B';
+  if (score >= 60) return 'C';
+  return 'D';
+}

@@ -12,6 +12,7 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 import dashscope
+import httpx
 from dashscope.audio.qwen_omni.omni_realtime import (
     AudioFormat,
     MultiModality,
@@ -447,3 +448,70 @@ class VoicePipeline:
                 )
             )
             await db.commit()
+
+
+# ============ Qwen-Omni-Realtime (WebRTC) 接入 ============
+# 端到端实时语音通话：单模型同时完成"听、理解、说"，浏览器通过 WebRTC 直连百炼，
+# 音频走 RTP，控制事件与文本转录走名为 oai-events 的 DataChannel。
+
+REALTIME_MODEL = "qwen3.5-omni-flash-realtime"
+REALTIME_VOICE = "Tina"
+REALTIME_REGIONS = {"cn-beijing", "ap-southeast-1"}
+
+
+def _realtime_webrtc_endpoint(settings: Settings) -> str:
+    workspace_id = (settings.ai_bailian_workspace_id or "").strip()
+    if not workspace_id:
+        raise RuntimeError("百炼 Realtime 未配置业务空间 ID（AI_BAILIAN_WORKSPACE_ID）")
+    region = settings.ai_bailian_realtime_region.strip().lower()
+    if region not in REALTIME_REGIONS:
+        supported = ", ".join(sorted(REALTIME_REGIONS))
+        raise RuntimeError(f"百炼 Realtime 地域无效，仅支持: {supported}")
+    return f"https://{workspace_id}.{region}.maas.aliyuncs.com/api/v1/webrtc/realtime"
+
+
+async def exchange_webrtc_sdp(
+    settings: Settings, offer_sdp: str, model: str = REALTIME_MODEL
+) -> str:
+    """将浏览器 Offer SDP 转发到百炼 Realtime API，返回 Answer SDP。
+
+    浏览器无法直接向百炼发起 SDP 交换（CORS 限制），且不应暴露 API Key，
+    因此由业务 AppServer（本后端）代理完成。
+    """
+    if not settings.ai_bailian_api_key:
+        raise RuntimeError("AI Provider未配置API Key")
+    url = f"{_realtime_webrtc_endpoint(settings)}?model={model}"
+    async with httpx.AsyncClient(timeout=30) as client:
+        response = await client.post(
+            url,
+            headers={
+                "Authorization": f"Bearer {settings.ai_bailian_api_key}",
+                "Content-Type": "application/sdp",
+            },
+            content=offer_sdp.encode("utf-8"),
+        )
+        if response.is_error:
+            detail = response.text[:500].strip()
+            suffix = f": {detail}" if detail else ""
+            raise RuntimeError(f"WebRTC SDP 交换失败: HTTP {response.status_code}{suffix}")
+        return response.text
+
+
+def build_interviewer_instructions(session: VoiceSession) -> str:
+    """生成端到端实时面试官的 system instructions。
+
+    模型通过 semantic_vad 自动断句、支持语义打断，instructions 只需约束角色、
+    提问节奏与开场行为，避免结构化输出。
+    """
+    skill = (session.skill_id or "java-backend").strip()
+    difficulty = (session.difficulty or "mid").strip()
+    return (
+        "你是一名专业、亲切、口语化的中文技术面试官，正在与候选人进行一场真实的语音面试。"
+        "请严格遵守：\n"
+        "1. 始终以面试官身份自然对话，用简短口语提问，不要念稿、不要输出编号或 Markdown。\n"
+        "2. 每次只问一个问题，等候选人说完后再追问或进入下一个问题，不要一次抛多个问题。\n"
+        "3. 问题围绕岗位技能由浅入深，结合候选人的回答灵活追问技术细节与关键决策。\n"
+        f"4. 岗位技能方向：{skill}；难度：{difficulty}。\n"
+        "5. 连接建立后，请先简短问候候选人，并直接抛出第一个问题。\n"
+        "6. 不要评价自己的表现，不要替候选人回答，不要输出无关客套话。"
+    )

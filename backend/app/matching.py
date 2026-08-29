@@ -67,9 +67,23 @@ class RawAnnotation(StrictModel):
         return self
 
 
+class RawGap(StrictModel):
+    """A single gap between the user resume and an ideal candidate for the JD.
+
+    Unlike annotations (which adjudicate explicit JD requirements), gaps are
+    forward-looking: what the candidate still needs to become a strong fit.
+    """
+
+    requirement: str = Field(min_length=1)
+    weight: Literal["hard", "must", "nice"]
+    evidence: str | None = None
+    suggestion: str = Field(min_length=1)
+
+
 class RawDetailedMatch(StrictModel):
     annotations: list[RawAnnotation]
     interview_tips: str
+    gaps: list[RawGap] = Field(default_factory=list)
 
     @model_validator(mode="after")
     def unique_requirements(self):
@@ -103,6 +117,15 @@ def compute_detailed_match(raw: RawDetailedMatch | dict) -> dict:
         "verdict": GRADE_VERDICT[grade],
         "annotations": annotations,
         "interview_tips": raw.interview_tips,
+        "gaps": [
+            {
+                "requirement": gap.requirement,
+                "weight": gap.weight,
+                "evidence": gap.evidence,
+                "suggestion": gap.suggestion,
+            }
+            for gap in raw.gaps
+        ],
     }
 
 
@@ -147,6 +170,12 @@ def build_detail_prompt(
 每个明确要求使用稳定且唯一的 requirement_id。job_text 和 resume_text 必须从上述原文精确复制，
 不得改写。minus 只能用于招聘原文明示的要求；missing 不得伪造 resume_text；hit/partial 必须有
 resume_text 证据。不要为无关经历或招聘未要求的内容生成 annotation。输出面试准备建议。
+
+另请输出差距清单 gaps（0 至 8 条）：站在"该岗位理想候选人"视角，指出候选人
+当前最需要补齐的能力或经历。每条给出 requirement（理想候选人应具备、但候选人欠缺或不足的
+能力/经历，用客观描述）、weight（hard/must/nice）、evidence（候选人简历中的现状片段，可空）
+和 suggestion（具体可执行的补齐建议）。gaps 不得编造岗位未要求的能力，也不得与 annotations
+重复堆砌，只聚焦最关键的差距。
 """
 
 

@@ -255,12 +255,17 @@ export default function ResumeDetailPage({ resumeId, onBack, onStartInterview }:
 
   const latestAnalysis = resume.analyses?.[0];
   const latestMatch = latestAnalysis?.jobMatchResult || matchResults[0];
+  const normalizedMatch = latestMatch ? {
+    ...latestMatch,
+    interviewTips: latestMatch.interviewTips || (latestMatch as MatchResultItem & { interview_tips?: string }).interview_tips || '',
+    gaps: Array.isArray(latestMatch.gaps) ? latestMatch.gaps : [],
+  } : undefined;
   const analysisForPanel = latestAnalysis || latestMatch ? {
     ...(latestAnalysis || {}),
-    jobMatch: latestMatch,
+    jobMatch: normalizedMatch,
     suggestions: [
       ...((latestAnalysis?.suggestions || []) as unknown[]),
-      ...((latestMatch?.annotations || []).map((annotation) => ({
+      ...((normalizedMatch?.annotations || []).map((annotation) => ({
         ...annotation,
         source: 'jd' as const,
         issue: annotation.label || annotation.requirement_id || '岗位要求匹配项',

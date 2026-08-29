@@ -13,6 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core import BusinessError, Result, decrypt_secret
 from app.database import get_db
+from app.embeddings import cosine_similarity, embed_texts, embedding_client
 from app.integrations import OpenAIClient
 from app.matching import (
     RawDetailedMatch,
@@ -119,6 +120,7 @@ def result_data(row: MatchResult) -> dict:
         "verdict": GRADE_VERDICT[grade] if normalized_score is not None else row.verdict,
         "annotations": annotations,
         "interviewTips": row.interview_tips or "",
+        "gaps": row.gaps_json or [],
         "provider": row.provider,
         "model": row.model,
         "status": row.status,
@@ -129,8 +131,8 @@ def result_data(row: MatchResult) -> dict:
             "totalTokens": row.total_tokens or 0,
         },
         "version": row.match_version,
-        "createdAt": row.created_at,
-        "updatedAt": row.updated_at,
+        "createdAt": row.created_at.isoformat() if row.created_at else None,
+        "updatedAt": row.updated_at.isoformat() if row.updated_at else None,
     }
 
 
@@ -237,6 +239,7 @@ async def persist_detail(
         row.verdict = detail["verdict"]
         row.annotations_json = detail["annotations"]
         row.interview_tips = detail["interview_tips"]
+        row.gaps_json = detail["gaps"]
         row.prompt_tokens = usage.prompt_tokens
         row.completion_tokens = usage.completion_tokens
         row.total_tokens = usage.total_tokens
@@ -317,6 +320,24 @@ async def run_smart_task(request: Request, task, body: SmartMatchRequest) -> Non
                 await manager.update(task, phase="error", error="简历不存在")
                 return
             jobs = (await db.scalars(select(JobTarget).order_by(JobTarget.id))).all()
+            embed_client = await embedding_client(request, db) if body.use_embedding else None
+            job_sim: dict[int, float] = {}
+            if embed_client is not None and jobs:
+                try:
+                    vectors = await embed_texts(
+                        embed_client,
+                        [resume.resume_text or ""] + [job.jd_text or "" for job in jobs],
+                    )
+                    resume_vec = vectors[0]
+                    job_sim = {
+                        job.id: cosine_similarity(resume_vec, vec)
+                        for job, vec in zip(jobs, vectors[1:], strict=True)
+                    }
+                except (BusinessError, ValueError):
+                    job_sim = {}
+            if body.embedding_cap and job_sim:
+                ranked = sorted(jobs, key=lambda job: job_sim.get(job.id, 0.0), reverse=True)
+                jobs = ranked[: body.embedding_cap]
             profile = await latest_profile(db, resume.id)
             client, provider, model = await provider_client(request, db, body.provider)
             await manager.update(
@@ -390,7 +411,12 @@ async def run_smart_task(request: Request, task, body: SmartMatchRequest) -> Non
                     screenTokens=screen_tokens,
                 )
 
-        promoted.sort(key=lambda item: item[1], reverse=True)
+        if job_sim:
+            promoted.sort(
+                key=lambda item: (item[1], job_sim.get(item[0].id, 0.0)), reverse=True
+            )
+        else:
+            promoted.sort(key=lambda item: item[1], reverse=True)
         await manager.update(
             task,
             phase="analyzing",

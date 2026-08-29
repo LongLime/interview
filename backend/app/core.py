@@ -52,6 +52,8 @@ class Settings(BaseSettings):
     app_storage_region: str = "us-east-1"
     app_storage_local_dir: Path = ROOT / "storage"
     ai_bailian_api_key: str | None = None
+    ai_bailian_workspace_id: str | None = None
+    ai_bailian_realtime_region: str = "cn-beijing"
     ai_model: str = "qwen3.5-flash"
     ai_base_url: str = "https://dashscope.aliyuncs.com/compatible-mode/v1"
     scrapling_api_url: str | None = None

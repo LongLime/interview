@@ -77,6 +77,7 @@ export default function Layout() {
   const navItems: NavItem[] = [
     { id: 'resumes', path: '/history', label: '简历管理', icon: FileStack },
     { id: 'career-fair', path: '/recruitment-events', label: '招聘活动', icon: CalendarDays },
+      { id: 'career-fair-schedule', path: '/recruitment-events/schedule', label: '招聘日程', icon: Calendar },
     { id: 'interview-hub', path: '/interview-hub', label: '模拟面试', icon: Sparkles },
     { id: 'interviews', path: '/interviews', label: '面试记录', icon: Users },
     { id: 'interview-schedule', path: '/interview-schedule', label: '面试日程', icon: Calendar },

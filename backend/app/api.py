@@ -7,7 +7,7 @@ import json
 import logging
 import re
 import uuid
-from datetime import UTC, datetime, time
+from datetime import UTC, date, datetime, time
 from pathlib import Path
 from typing import Annotated, Any
 from urllib.parse import quote
@@ -47,6 +47,8 @@ from app.integrations import OpenAIClient
 from app.models import (
     AppUser,
     CareerFair,
+    CareerFairSchedule,
+    CareerFairUserState,
     Contribution,
     ContributionCompany,
     ContributionQuestion,
@@ -70,6 +72,8 @@ from app.models import (
 from app.pdf_export import interview_pdf, resume_pdf
 from app.schemas import (
     AnswerRequest,
+    CareerFairScheduleRequest,
+    CareerFairUserStateRequest,
     CategoryRequest,
     ContributionSubmit,
     CreateTextInterview,
@@ -86,6 +90,8 @@ from app.schemas import (
     StatusRequest,
     TitleRequest,
     VoiceCreate,
+    VoiceMessageCreate,
+    WebrtcSdpRequest,
 )
 from app.scoring import (
     GRADE_VERDICT,
@@ -95,7 +101,13 @@ from app.scoring import (
     grade_from_match_score,
     match_score_from_annotations,
 )
-from app.voice_pipeline import VoicePipeline
+from app.voice_pipeline import (
+    REALTIME_MODEL,
+    REALTIME_VOICE,
+    VoicePipeline,
+    build_interviewer_instructions,
+    exchange_webrtc_sdp,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -2471,6 +2483,55 @@ async def voice_messages(item_id: int, db: Db):
     )
 
 
+@router.post("/voice-interview/sessions/{item_id}/webrtc/sdp")
+async def voice_webrtc_sdp(item_id: int, body: WebrtcSdpRequest, db: Db, request: Request):
+    row = await voice_or_error(db, item_id)
+    try:
+        answer_sdp = await exchange_webrtc_sdp(settings(request), body.offer_sdp)
+    except Exception as exc:
+        raise BusinessError(10004, str(exc)) from exc
+    return ok(
+        {
+            "answerSdp": answer_sdp,
+            "model": REALTIME_MODEL,
+            "voice": REALTIME_VOICE,
+            "instructions": build_interviewer_instructions(row),
+        }
+    )
+
+
+@router.post("/voice-interview/sessions/{item_id}/messages")
+async def voice_append_message(
+    item_id: int,
+    body: VoiceMessageCreate,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    row = await voice_or_error(db, item_id)
+    if not (body.user_text or body.ai_text):
+        raise BusinessError(10002, "消息内容不能为空")
+    max_seq = (
+        await db.scalar(
+            select(func.max(VoiceMessage.sequence_num)).where(
+                VoiceMessage.session_id == item_id
+            )
+        )
+        or 0
+    )
+    db.add(
+        VoiceMessage(
+            session_id=item_id,
+            message_type=body.message_type,
+            phase=row.current_phase or "INTRO",
+            user_recognized_text=body.user_text,
+            ai_generated_text=body.ai_text,
+            sequence_num=max_seq + 1,
+        )
+    )
+    await db.commit()
+    return ok()
+
+
 @router.get("/voice-interview/sessions/{item_id}/evaluation")
 async def voice_evaluation(item_id: int, db: Db):
     row = await voice_or_error(db, item_id)
@@ -2537,6 +2598,18 @@ async def search_fairs(body: dict, db: Db):
                 CareerFair.company_name.ilike(f"%{keyword}%"),
             )
         )
+    fair_type = body.get("fairType")
+    if fair_type:
+        query = query.where(CareerFair.fair_type == fair_type)
+    try:
+        start_date = date.fromisoformat(body["startDate"]) if body.get("startDate") else None
+        end_date = date.fromisoformat(body["endDate"]) if body.get("endDate") else None
+    except ValueError as exc:
+        raise BusinessError(400, "日期格式无效") from exc
+    if start_date:
+        query = query.where(CareerFair.fair_date >= start_date)
+    if end_date:
+        query = query.where(CareerFair.fair_date <= end_date)
     result = await db.execute(
         query.add_columns(func.count().over().label("total_count"))
         .order_by(CareerFair.fair_date)
@@ -2615,11 +2688,323 @@ async def upcoming_fairs(db: Db, limit: int = 10):
     )
 
 
-@router.get("/career-fair/{item_id}")
-async def fair_detail(item_id: int, db: Db):
+def career_fair_list_item(row: CareerFair) -> dict[str, Any]:
+    return as_dict(
+        row,
+        "id",
+        "external_id",
+        "title",
+        "company_name",
+        "university_name",
+        "venue",
+        "address",
+        "fair_date",
+        "start_time",
+        "end_time",
+        "fair_type",
+        "source_url",
+        "view_count",
+    )
+
+
+@router.get("/career-fair/favorites")
+async def favorite_fairs(
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+    keyword: str | None = None,
+    page: int = 0,
+    size: int = 20,
+):
+    page = max(0, page)
+    size = min(100, max(1, size))
+    query = (
+        select(CareerFair)
+        .join(CareerFairUserState, CareerFairUserState.career_fair_id == CareerFair.id)
+        .where(
+            CareerFair.is_active.is_(True),
+            CareerFairUserState.user_id == user.id,
+            CareerFairUserState.is_favorited.is_(True),
+        )
+    )
+    if keyword:
+        query = query.where(
+            or_(
+                CareerFair.title.ilike(f"%{keyword}%"),
+                CareerFair.company_name.ilike(f"%{keyword}%"),
+                CareerFair.venue.ilike(f"%{keyword}%"),
+            )
+        )
+    result = await db.execute(
+        query.add_columns(func.count().over().label("total_count"))
+        .order_by(CareerFair.fair_date, CareerFair.start_time)
+        .offset(page * size)
+        .limit(size)
+    )
+    rows = result.all()
+    total = rows[0].total_count if rows else 0
+    return ok(
+        {
+            "content": [career_fair_list_item(row.CareerFair) for row in rows],
+            "totalElements": total,
+            "totalPages": (total + size - 1) // size,
+            "size": size,
+            "number": page,
+        }
+    )
+
+
+@router.post("/career-fair/recommendations")
+async def recommend_fairs(
+    body: dict,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    limit = min(50, max(1, int(body.get("limit", 20))))
+    preference_rows = (
+        await db.execute(
+            select(CareerFair)
+            .join(CareerFairUserState, CareerFairUserState.career_fair_id == CareerFair.id)
+            .where(
+                CareerFairUserState.user_id == user.id,
+                or_(
+                    CareerFairUserState.is_favorited.is_(True),
+                    CareerFairUserState.is_scheduled.is_(True),
+                ),
+            )
+        )
+    ).scalars().all()
+    industries = {row.industry for row in preference_rows if row.industry}
+    fair_types = {row.fair_type for row in preference_rows if row.fair_type}
+    companies = {row.company_name for row in preference_rows if row.company_name}
+
+    query = select(CareerFair).where(
+        CareerFair.is_active.is_(True),
+        CareerFair.fair_date >= date.today(),
+    )
+    keyword = str(body.get("keyword", "")).strip()
+    if keyword:
+        query = query.where(
+            or_(
+                CareerFair.title.ilike(f"%{keyword}%"),
+                CareerFair.company_name.ilike(f"%{keyword}%"),
+            )
+        )
+    candidates = (await db.scalars(query.limit(200))).all()
+
+    recommendations = []
+    for row in candidates:
+        score = min(row.view_count or 0, 20)
+        reasons = []
+        if row.industry and row.industry in industries:
+            score += 40
+            reasons.append("与你收藏的行业相似")
+        if row.fair_type and row.fair_type in fair_types:
+            score += 25
+            reasons.append("符合你关注的活动类型")
+        if row.company_name and row.company_name in companies:
+            score += 20
+            reasons.append("来自你关注的企业")
+        if not reasons:
+            reasons.append("近期热门招聘活动")
+        item = career_fair_list_item(row)
+        item.update({"recommendScore": score, "recommendReason": "，".join(reasons)})
+        recommendations.append(item)
+    recommendations.sort(
+        key=lambda item: (-item["recommendScore"], item["fairDate"] or date.max)
+    )
+    return ok(recommendations[:limit])
+
+
+async def career_fair_or_error(db: AsyncSession, item_id: int) -> CareerFair:
     row = await db.get(CareerFair, item_id)
     if not row:
         raise BusinessError(11001, "招聘会不存在")
+    return row
+
+
+@router.get("/career-fair/{item_id}/state")
+async def career_fair_state(
+    item_id: int,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    await career_fair_or_error(db, item_id)
+    row = await db.scalar(
+        select(CareerFairUserState).where(
+            CareerFairUserState.user_id == user.id,
+            CareerFairUserState.career_fair_id == item_id,
+        )
+    )
+    return ok(
+        {
+            "isFavorited": row.is_favorited if row else False,
+            "isScheduled": row.is_scheduled if row else False,
+        }
+    )
+
+
+@router.put("/career-fair/{item_id}/state")
+async def update_career_fair_state(
+    item_id: int,
+    body: CareerFairUserStateRequest,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    selected_fair = await career_fair_or_error(db, item_id)
+    row = await db.scalar(
+        select(CareerFairUserState).where(
+            CareerFairUserState.user_id == user.id,
+            CareerFairUserState.career_fair_id == item_id,
+        )
+    )
+    if row is None:
+        row = CareerFairUserState(user_id=user.id, career_fair_id=item_id)
+        db.add(row)
+    row.is_favorited = body.is_favorited
+    row.is_scheduled = body.is_scheduled
+    schedule = await db.scalar(
+        select(CareerFairSchedule).where(
+            CareerFairSchedule.user_id == user.id,
+            CareerFairSchedule.career_fair_id == item_id,
+        )
+    )
+    if body.is_scheduled and schedule is None:
+        start_date = selected_fair.fair_date or date.today()
+        start_time = datetime.combine(start_date, selected_fair.start_time or time(9, 0))
+        end_time = (
+            datetime.combine(start_date, selected_fair.end_time)
+            if selected_fair.end_time
+            else None
+        )
+        db.add(
+            CareerFairSchedule(
+                user_id=user.id,
+                career_fair_id=item_id,
+                title=selected_fair.title,
+                start_time=start_time,
+                end_time=end_time,
+                location=selected_fair.venue or selected_fair.address,
+            )
+        )
+    elif not body.is_scheduled and schedule is not None:
+        await db.delete(schedule)
+    await db.commit()
+    return ok({"isFavorited": row.is_favorited, "isScheduled": row.is_scheduled})
+
+
+def career_fair_schedule_data(row: CareerFairSchedule) -> dict[str, Any]:
+    return as_dict(
+        row,
+        "id",
+        "career_fair_id",
+        "title",
+        "start_time",
+        "end_time",
+        "location",
+        "notes",
+        "remind_minutes",
+        "created_at",
+        "updated_at",
+    )
+
+
+@router.get("/career-fair/schedules")
+async def list_career_fair_schedules(
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+    startDate: datetime | None = None,
+    endDate: datetime | None = None,
+):
+    query = select(CareerFairSchedule).where(CareerFairSchedule.user_id == user.id)
+    if startDate:
+        query = query.where(CareerFairSchedule.start_time >= startDate)
+    if endDate:
+        query = query.where(CareerFairSchedule.start_time <= endDate)
+    rows = (await db.scalars(query.order_by(CareerFairSchedule.start_time))).all()
+    return ok([career_fair_schedule_data(row) for row in rows])
+
+
+@router.post("/career-fair/schedules")
+async def create_career_fair_schedule(
+    body: CareerFairScheduleRequest,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    if body.career_fair_id is not None:
+        await career_fair_or_error(db, body.career_fair_id)
+    row = CareerFairSchedule(user_id=user.id, **body.model_dump())
+    db.add(row)
+    if body.career_fair_id is not None:
+        state = await db.scalar(
+            select(CareerFairUserState).where(
+                CareerFairUserState.user_id == user.id,
+                CareerFairUserState.career_fair_id == body.career_fair_id,
+            )
+        )
+        if state is None:
+            state = CareerFairUserState(
+                user_id=user.id,
+                career_fair_id=body.career_fair_id,
+            )
+            db.add(state)
+        state.is_scheduled = True
+    await db.commit()
+    await db.refresh(row)
+    return ok(career_fair_schedule_data(row))
+
+
+async def get_career_fair_schedule(
+    db: AsyncSession, item_id: int, user_id: int
+) -> CareerFairSchedule:
+    row = await db.scalar(
+        select(CareerFairSchedule).where(
+            CareerFairSchedule.id == item_id,
+            CareerFairSchedule.user_id == user_id,
+        )
+    )
+    if not row:
+        raise BusinessError(9001, "招聘活动日程不存在")
+    return row
+
+
+@router.put("/career-fair/schedules/{item_id}")
+async def update_career_fair_schedule(
+    item_id: int,
+    body: CareerFairScheduleRequest,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    row = await get_career_fair_schedule(db, item_id, user.id)
+    for key, value in body.model_dump().items():
+        setattr(row, key, value)
+    await db.commit()
+    await db.refresh(row)
+    return ok(career_fair_schedule_data(row))
+
+
+@router.delete("/career-fair/schedules/{item_id}")
+async def delete_career_fair_schedule(
+    item_id: int,
+    db: Db,
+    user: Annotated[AppUser, Depends(current_user)],
+):
+    row = await get_career_fair_schedule(db, item_id, user.id)
+    await db.delete(row)
+    state = await db.scalar(
+        select(CareerFairUserState).where(
+            CareerFairUserState.user_id == user.id,
+            CareerFairUserState.career_fair_id == row.career_fair_id,
+        )
+    )
+    if state:
+        state.is_scheduled = False
+    await db.commit()
+    return ok()
+
+
+@router.get("/career-fair/{item_id}")
+async def fair_detail(item_id: int, db: Db):
+    row = await career_fair_or_error(db, item_id)
     row.view_count += 1
     await db.commit()
     return ok(

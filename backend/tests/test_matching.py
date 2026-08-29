@@ -276,3 +276,44 @@ def test_smart_task_can_be_cancelled(monkeypatch):
     assert status["phase"] == "cancelled"
     assert "已提交结果保留" in status["message"]
     assert '"phase": "cancelled"' in stream.text
+
+
+def test_gap_list_is_computed_and_passed_through():
+    raw = {
+        "annotations": [annotation()],
+        "interview_tips": "准备项目细节。",
+        "gaps": [
+            {
+                "requirement": "分布式系统实战经验",
+                "weight": "must",
+                "evidence": "仅有单机项目",
+                "suggestion": "补充一个分布式项目",
+            }
+        ],
+    }
+    result = compute_detailed_match(raw)
+    assert result["score"] == 100
+    assert result["gaps"] == [
+        {
+            "requirement": "分布式系统实战经验",
+            "weight": "must",
+            "evidence": "仅有单机项目",
+            "suggestion": "补充一个分布式项目",
+        }
+    ]
+
+
+def test_gap_requires_requirement_and_suggestion():
+    with pytest.raises(ValidationError, match="suggestion"):
+        RawDetailedMatch.model_validate(
+            {
+                "annotations": [annotation()],
+                "interview_tips": "准备项目细节。",
+                "gaps": [{"requirement": "缺少经验", "weight": "must"}],
+            }
+        )
+
+
+def test_missing_gaps_field_defaults_to_empty_list():
+    result = compute_detailed_match(detail_response())
+    assert result["gaps"] == []

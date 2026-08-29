@@ -83,71 +83,18 @@ export interface SessionMeta {
   evaluateError?: string;
 }
 
-// WebSocket 消息类型
-export interface WebSocketAudioMessage {
-  type: 'audio';
-  data: string; // Base64 编码的音频
-  timestamp?: number;
+// WebRTC 实时通话相关类型
+export interface SdpExchangeResponse {
+  answerSdp: string;
+  model: string;
+  voice: string;
+  instructions: string;
 }
 
-export interface WebSocketSubtitleMessage {
-  type: 'subtitle';
-  text: string;
-  isFinal: boolean;
-}
-
-export interface WebSocketAudioResponseMessage {
-  type: 'audio';
-  data: string; // Base64 编码的音频
-  text: string;
-}
-
-export interface WebSocketTextMessage {
-  type: 'text';
-  content: string;
-  final?: boolean;
-}
-
-export interface WebSocketAudioChunkMessage {
-  type: 'audio_chunk';
-  data: string; // Base64 WAV
-  index: number;
-  isLast: boolean;
-}
-
-export interface WebSocketControlResponseMessage {
-  type: 'control';
-  action: string;
-  message?: string;
-  timestamp?: number;
-}
-
-export interface WebSocketErrorMessage {
-  type: 'error';
-  message: string;
-}
-
-export type WebSocketMessage =
-  | WebSocketAudioMessage
-  | WebSocketSubtitleMessage
-  | WebSocketAudioResponseMessage
-  | WebSocketTextMessage
-  | WebSocketAudioChunkMessage
-  | WebSocketControlResponseMessage
-  | WebSocketErrorMessage;
-
-// WebSocket 事件处理器
-export interface WebSocketEventHandlers {
-  onMessage?: (message: WebSocketMessage) => void;
-  onSubtitle?: (text: string, isFinal: boolean) => void;
-  onAudioResponse?: (audioData: string, text: string) => void;
-  onTextResponse?: (text: string, isFinal: boolean) => void;
-  onAudioChunk?: (data: string, index: number, isLast: boolean) => void;
-  onControl?: (action: string, message?: string) => void;
-  onErrorMessage?: (message: string) => void;
-  onOpen?: () => void;
-  onClose?: (event: CloseEvent) => void;
-  onError?: (error: Event) => void;
+export interface AppendMessageRequest {
+  messageType: string;
+  userText?: string | null;
+  aiText?: string | null;
 }
 
 // ========== API 函数 ==========
@@ -240,174 +187,29 @@ export const voiceInterviewApi = {
     return request.delete(`/api/voice-interview/sessions/${sessionId}`);
   },
 
+  /**
+   * WebRTC 通话：将浏览器 Offer SDP 交给后端代理交换，换取 Answer SDP 与会话配置
+   */
+  async exchangeSdp(sessionId: number, offerSdp: string): Promise<SdpExchangeResponse> {
+    return request.post<SdpExchangeResponse>(
+      `/api/voice-interview/sessions/${sessionId}/webrtc/sdp`,
+      { offerSdp }
+    );
+  },
+
+  /**
+   * WebRTC 通话：回传一条转录消息（用户回答或面试官提问），用于存档与评分
+   */
+  async appendMessage(
+    sessionId: number,
+    message: AppendMessageRequest
+  ): Promise<void> {
+    return request.post<void>(
+      `/api/voice-interview/sessions/${sessionId}/messages`,
+      message
+    );
+  },
+
 };
-
-// ========== WebSocket 连接管理类 ==========
-
-export class VoiceInterviewWebSocket {
-  private ws: WebSocket | null = null;
-  private url: string;
-  private handlers: WebSocketEventHandlers;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 3;
-  private reconnectDelay = 2000;
-
-  constructor(_sessionId: number, url: string, handlers: WebSocketEventHandlers) {
-    this.url = url;
-    this.handlers = handlers;
-  }
-
-  /**
-   * 建立 WebSocket 连接
-   */
-  connect(): void {
-    try {
-      this.ws = new WebSocket(this.url);
-
-      this.ws.onopen = () => {
-        this.reconnectAttempts = 0;
-        this.handlers.onOpen?.();
-      };
-
-      this.ws.onmessage = (event) => {
-        try {
-          const message = JSON.parse(event.data) as WebSocketMessage;
-
-          // 调用通用消息处理器
-          this.handlers.onMessage?.(message);
-
-          // 根据消息类型调用特定处理器
-          switch (message.type) {
-            case 'subtitle':
-              this.handlers.onSubtitle?.(
-                message.text,
-                (message as WebSocketSubtitleMessage).isFinal
-              );
-              break;
-            case 'audio':
-              // 检查是否是 AI 响应（包含 text 字段）
-              if ('text' in message) {
-                const audioMsg = message as WebSocketAudioResponseMessage;
-                this.handlers.onAudioResponse?.(audioMsg.data, audioMsg.text);
-              }
-              break;
-            case 'audio_chunk':
-              if ('index' in message) {
-                const chunkMsg = message as WebSocketAudioChunkMessage;
-                this.handlers.onAudioChunk?.(chunkMsg.data, chunkMsg.index, chunkMsg.isLast);
-              }
-              break;
-            case 'text':
-              if ('content' in message) {
-                const textMsg = message as WebSocketTextMessage;
-                this.handlers.onTextResponse?.(textMsg.content, !!textMsg.final);
-              }
-              break;
-            case 'control':
-              this.handlers.onControl?.(message.action, message.message);
-              break;
-            case 'error':
-              this.handlers.onErrorMessage?.(message.message);
-              break;
-          }
-        } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
-        }
-      };
-
-      this.ws.onclose = (event) => {
-        this.handlers.onClose?.(event);
-
-        if (!event.wasClean && this.reconnectAttempts < this.maxReconnectAttempts) {
-          this.reconnectAttempts++;
-          setTimeout(() => this.connect(), this.reconnectDelay);
-        }
-      };
-
-      this.ws.onerror = (error) => {
-        this.handlers.onError?.(error);
-      };
-    } catch (error) {
-      console.error('Error creating WebSocket connection:', error);
-      this.handlers.onError?.(error as Event);
-    }
-  }
-
-  /**
-   * 发送音频数据
-   */
-  sendAudio(audioData: string): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message: WebSocketAudioMessage = {
-        type: 'audio',
-        data: audioData,
-        timestamp: Date.now(),
-      };
-      this.ws.send(JSON.stringify(message));
-      return true;
-    }
-    console.warn('WebSocket is not connected');
-    return false;
-  }
-
-  /**
-   * 发送控制消息
-   */
-  sendControl(action: string, data?: Record<string, unknown>): boolean {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      const message = {
-        type: 'control',
-        action,
-        data,
-        timestamp: Date.now(),
-      };
-      this.ws.send(JSON.stringify(message));
-      return true;
-    }
-    console.warn('WebSocket is not connected');
-    return false;
-  }
-
-  /**
-   * 关闭连接
-   */
-  disconnect(): void {
-    if (this.ws) {
-      // 不重连
-      this.reconnectAttempts = this.maxReconnectAttempts;
-      this.ws.close(1000, 'User disconnected');
-      this.ws = null;
-    }
-  }
-
-  /**
-   * 获取连接状态
-   */
-  getReadyState(): number {
-    return this.ws?.readyState ?? WebSocket.CLOSED;
-  }
-
-  /**
-   * 是否已连接
-   */
-  isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
-  }
-}
-
-// ========== 便捷函数 ==========
-
-/**
- * 创建并连接 WebSocket
- */
-export function connectWebSocket(
-  sessionId: number,
-  webSocketUrl: string,
-  handlers: WebSocketEventHandlers
-): VoiceInterviewWebSocket {
-  const ws = new VoiceInterviewWebSocket(sessionId, webSocketUrl, handlers);
-  ws.connect();
-  return ws;
-}
 
 export default voiceInterviewApi;

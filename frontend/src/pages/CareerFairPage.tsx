@@ -20,9 +20,14 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
+  Heart,
+  CalendarPlus,
+  Sparkles,
 } from 'lucide-react';
-import { careerFairApi, scrapeTaskApi, type CareerFairListItem, type PageResponse, type ScrapeProgress } from '../api/careerFair';
+import { careerFairApi, scrapeTaskApi, type CareerFair, type CareerFairListItem, type CareerFairUserState, type PageResponse, type RecommendedCareerFair, type ScrapeProgress } from '../api/careerFair';
 import { getErrorMessage } from '../api/request';
+
+type FeedMode = 'all' | 'recommended' | 'favorites';
 
 export default function CareerFairPage() {
   const navigate = useNavigate();
@@ -33,6 +38,8 @@ export default function CareerFairPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [feedMode, setFeedMode] = useState<FeedMode>('all');
+  const [recommendReasons, setRecommendReasons] = useState<Record<number, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [fairType, setFairType] = useState('');
   const [startDate, setStartDate] = useState('');
@@ -42,6 +49,50 @@ export default function CareerFairPage() {
 
   const [showProgress, setShowProgress] = useState(false);
   const [progressData, setProgressData] = useState<ScrapeProgress | null>(null);
+  const [selectedFair, setSelectedFair] = useState<CareerFair | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailError, setDetailError] = useState('');
+  const [fairState, setFairState] = useState<CareerFairUserState | null>(null);
+  const [stateSaving, setStateSaving] = useState(false);
+
+  const handleOpenFair = async (fair: CareerFairListItem) => {
+    setSelectedFair(null);
+    setFairState(null);
+    setDetailError('');
+    setDetailLoading(true);
+    try {
+      const [detail, state] = await Promise.all([
+        careerFairApi.getCareerFairById(fair.id),
+        careerFairApi.getCareerFairState(fair.id),
+      ]);
+      setSelectedFair(detail);
+      setFairState(state);
+    } catch (err) {
+      setDetailError(getErrorMessage(err));
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  const handleUpdateFairState = async (change: Partial<CareerFairUserState>) => {
+    if (!selectedFair || !fairState || stateSaving) return;
+    const previousState = fairState;
+    const nextState = { ...fairState, ...change };
+    setFairState(nextState);
+    setStateSaving(true);
+    try {
+      const savedState = await careerFairApi.updateCareerFairState(selectedFair.id, nextState);
+      setFairState(savedState);
+      if (feedMode === 'favorites' && !savedState.isFavorited) {
+        await fetchCareerFairs(0, 'favorites');
+      }
+    } catch (err) {
+      setFairState(previousState);
+      setDetailError(getErrorMessage(err));
+    } finally {
+      setStateSaving(false);
+    }
+  };
 
   const handleSyncData = async () => {
     if (showProgress) return;
@@ -88,7 +139,7 @@ export default function CareerFairPage() {
     setProgressData(null);
   };
 
-  const fetchCareerFairs = async (pageNum: number = 0) => {
+  const fetchCareerFairs = async (pageNum: number = 0, mode: FeedMode = feedMode) => {
     const requestSequence = ++listRequestSequence.current;
     listRequestController.current?.abort();
     const controller = new AbortController();
@@ -96,14 +147,40 @@ export default function CareerFairPage() {
     setLoading(true);
     setError('');
     try {
-      const result: PageResponse<CareerFairListItem> = await careerFairApi.searchCareerFairs({
-        keyword: keyword || undefined,
-        fairType: fairType || undefined,
-        startDate: startDate || undefined,
-        endDate: endDate || undefined,
-        page: pageNum,
-        size: 12,
-      }, { signal: controller.signal });
+      let result: PageResponse<CareerFairListItem>;
+      if (mode === 'favorites') {
+        result = await careerFairApi.getFavoriteCareerFairs({
+          keyword: keyword || undefined,
+          page: pageNum,
+          size: 12,
+        }, { signal: controller.signal });
+        setRecommendReasons({});
+      } else if (mode === 'recommended') {
+        const recommendations = await careerFairApi.getRecommendedCareerFairs({
+          keyword: keyword || undefined,
+          limit: 50,
+        }, { signal: controller.signal });
+        const offset = pageNum * 12;
+        const content = recommendations.slice(offset, offset + 12);
+        result = {
+          content,
+          totalElements: recommendations.length,
+          totalPages: Math.ceil(recommendations.length / 12),
+          size: 12,
+          number: pageNum,
+        };
+        setRecommendReasons(Object.fromEntries(recommendations.map((item: RecommendedCareerFair) => [item.id, item.recommendReason])));
+      } else {
+        result = await careerFairApi.searchCareerFairs({
+          keyword: keyword || undefined,
+          fairType: fairType || undefined,
+          startDate: startDate || undefined,
+          endDate: endDate || undefined,
+          page: pageNum,
+          size: 12,
+        }, { signal: controller.signal });
+        setRecommendReasons({});
+      }
       if (requestSequence !== listRequestSequence.current) return;
       setCareerFairs(result.content);
       setTotalPages(result.totalPages);
@@ -130,6 +207,12 @@ export default function CareerFairPage() {
   const handleSearch = () => {
     setPage(0);
     fetchCareerFairs(0);
+  };
+
+  const handleFeedModeChange = (mode: FeedMode) => {
+    setFeedMode(mode);
+    setPage(0);
+    fetchCareerFairs(0, mode);
   };
 
   const handlePageChange = (newPage: number) => {
@@ -370,6 +453,27 @@ export default function CareerFairPage() {
       </div>
 
       {/* Search & Filters */}
+      <div className="flex items-center gap-1 mb-4 border-b border-outline-variant/60" role="tablist" aria-label="招聘活动视图">
+        {([
+          ['all', '全部活动', Megaphone],
+          ['recommended', '为你推荐', Sparkles],
+          ['favorites', '我的收藏', Heart],
+        ] as const).map(([mode, label, Icon]) => (
+          <button
+            key={mode}
+            type="button"
+            role="tab"
+            aria-selected={feedMode === mode}
+            onClick={() => handleFeedModeChange(mode)}
+            className={`relative flex items-center gap-2 px-4 py-3 text-sm font-medium transition-colors ${feedMode === mode ? 'text-primary' : 'text-on-surface-variant hover:text-on-surface'}`}
+          >
+            <Icon className={`w-4 h-4 ${mode === 'favorites' && feedMode === mode ? 'fill-current' : ''}`} />
+            {label}
+            {feedMode === mode && <span className="absolute inset-x-2 bottom-0 h-0.5 bg-primary rounded-full" />}
+          </button>
+        ))}
+      </div>
+
       <div className="bg-surface-container-low rounded-xl p-4 mb-6 border border-outline-variant/50">
         <div className="flex items-center gap-3">
           <div className="flex-1 relative">
@@ -383,7 +487,7 @@ export default function CareerFairPage() {
               className="w-full pl-10 pr-4 py-2.5 bg-surface rounded-lg border border-outline-variant text-on-surface placeholder:text-on-surface-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary transition-all"
             />
           </div>
-          <button
+          {feedMode === 'all' && <button
             onClick={() => setShowFilters(!showFilters)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-lg border transition-colors ${
               showFilters
@@ -393,7 +497,7 @@ export default function CareerFairPage() {
           >
             <Filter className="w-4 h-4" />
             筛选
-          </button>
+          </button>}
           <button
             onClick={handleSearch}
             className="px-6 py-2.5 bg-primary text-on-primary rounded-lg hover:bg-primary/90 transition-colors font-medium"
@@ -402,7 +506,7 @@ export default function CareerFairPage() {
           </button>
         </div>
 
-        {showFilters && (
+        {showFilters && feedMode === 'all' && (
           <motion.div
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
@@ -454,7 +558,7 @@ export default function CareerFairPage() {
       {/* Stats */}
       <div className="flex items-center justify-between mb-4">
         <p className="text-sm text-on-surface-variant">
-          共 <span className="font-medium text-on-surface">{totalElements}</span> 场招聘活动
+          {feedMode === 'favorites' ? '已收藏' : feedMode === 'recommended' ? '为你筛选' : '共'} <span className="font-medium text-on-surface">{totalElements}</span> 场招聘活动
         </p>
       </div>
 
@@ -476,9 +580,11 @@ export default function CareerFairPage() {
       ) : careerFairs.length === 0 ? (
         <div className="text-center py-20 bg-surface-container-low rounded-xl border border-outline-variant/50">
           <Megaphone className="w-12 h-12 text-on-surface-variant/30 mx-auto mb-4" />
-          <p className="text-on-surface-variant">暂无招聘活动</p>
+          <p className="text-on-surface-variant">
+            {feedMode === 'favorites' ? '还没有收藏的招聘活动' : feedMode === 'recommended' ? '暂无符合条件的推荐活动' : '暂无招聘活动'}
+          </p>
           <p className="text-sm text-on-surface-variant/60 mt-1">
-            点击右上角“同步数据”按钮获取最新招聘活动
+            {feedMode === 'favorites' ? '在活动详情中点击收藏后会显示在这里' : feedMode === 'recommended' ? '收藏或加入日程后，推荐会更贴近你的偏好' : '点击右上角“同步数据”按钮获取最新招聘活动'}
           </p>
         </div>
       ) : (
@@ -489,6 +595,12 @@ export default function CareerFairPage() {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: index * 0.05 }}
+              onClick={() => handleOpenFair(fair)}
+              role="button"
+              tabIndex={0}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') handleOpenFair(fair);
+              }}
               className="bg-surface-container-low rounded-xl border border-outline-variant/50 p-5 hover:shadow-md hover:border-primary/30 transition-all group"
             >
               <div className="flex items-start justify-between mb-3">
@@ -499,6 +611,12 @@ export default function CareerFairPage() {
                     </span>
                   </div>
                   <h3 className="font-semibold text-on-surface truncate group-hover:text-primary transition-colors">{fair.title}</h3>
+                  {recommendReasons[fair.id] && (
+                    <p className="mt-2 flex items-center gap-1.5 text-xs text-primary">
+                      <Sparkles className="w-3.5 h-3.5 shrink-0" />
+                      <span className="truncate">{recommendReasons[fair.id]}</span>
+                    </p>
+                  )}
                 </div>
                 {getStatusBadge(fair.fairDate)}
               </div>
@@ -548,6 +666,7 @@ export default function CareerFairPage() {
                       href={fair.sourceUrl}
                       target="_blank"
                       rel="noopener noreferrer"
+                      onClick={(event) => event.stopPropagation()}
                       className="p-1.5 text-on-surface-variant hover:text-primary hover:bg-primary-container/20 rounded-lg transition-colors"
                       title="查看原文"
                     >
@@ -560,6 +679,88 @@ export default function CareerFairPage() {
           ))}
         </div>
       )}
+
+      <AnimatePresence>
+        {(detailLoading || selectedFair) && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            onClick={() => !stateSaving && (setSelectedFair(null), setDetailError(''))}
+          >
+            <motion.aside
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 28, stiffness: 260 }}
+              onClick={(event) => event.stopPropagation()}
+              className="absolute right-0 top-0 h-full w-full max-w-xl overflow-y-auto bg-surface-container-low p-6 shadow-2xl"
+            >
+              <div className="flex items-center justify-between mb-8">
+                <span className="text-sm font-medium text-primary">活动详情</span>
+                <button
+                  onClick={() => setSelectedFair(null)}
+                  className="p-2 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high rounded-lg transition-colors"
+                  title="关闭详情"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+              {detailLoading ? (
+                <div className="flex justify-center py-24"><Loader2 className="w-8 h-8 text-primary animate-spin" /></div>
+              ) : selectedFair && (
+                <>
+                  <div className="mb-6">
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-2 py-1 rounded-md bg-primary-container text-on-primary-container text-xs font-medium">
+                        {getFairTypeLabel(selectedFair.fairType)}
+                      </span>
+                      {getStatusBadge(selectedFair.fairDate)}
+                    </div>
+                    <h2 className="text-2xl font-bold text-on-surface leading-tight">{selectedFair.title}</h2>
+                  </div>
+
+                  {detailError && <p className="mb-4 text-sm text-error">{detailError}</p>}
+                  {fairState && (
+                    <div className="grid grid-cols-2 gap-3 mb-7">
+                      <button
+                        onClick={() => handleUpdateFairState({ isFavorited: !fairState.isFavorited })}
+                        disabled={stateSaving}
+                        className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 font-medium transition-colors ${fairState.isFavorited ? 'border-error/40 bg-error-container text-on-error-container' : 'border-outline-variant text-on-surface hover:bg-surface-container-high'}`}
+                      >
+                        <Heart className={`w-4 h-4 ${fairState.isFavorited ? 'fill-current' : ''}`} />
+                        {fairState.isFavorited ? '已收藏' : '收藏活动'}
+                      </button>
+                      <button
+                        onClick={() => handleUpdateFairState({ isScheduled: !fairState.isScheduled })}
+                        disabled={stateSaving}
+                        className={`flex items-center justify-center gap-2 rounded-lg border px-4 py-3 font-medium transition-colors ${fairState.isScheduled ? 'border-primary/40 bg-primary-container text-on-primary-container' : 'border-outline-variant text-on-surface hover:bg-surface-container-high'}`}
+                      >
+                        <CalendarPlus className="w-4 h-4" />
+                        {fairState.isScheduled ? '已加入日程' : '加入日程'}
+                      </button>
+                    </div>
+                  )}
+
+                  <div className="space-y-3 border-y border-outline-variant/50 py-5 mb-6 text-sm text-on-surface-variant">
+                    <div className="flex gap-3"><Calendar className="w-4 h-4 mt-0.5 shrink-0" /><span>{formatDate(selectedFair.fairDate)} {formatTime(selectedFair.startTime)}{selectedFair.endTime && ` - ${formatTime(selectedFair.endTime)}`}</span></div>
+                    {selectedFair.companyName && <div className="flex gap-3"><Building2 className="w-4 h-4 mt-0.5 shrink-0" /><span>{selectedFair.companyName}</span></div>}
+                    {selectedFair.universityName && <div className="flex gap-3"><GraduationCap className="w-4 h-4 mt-0.5 shrink-0" /><span>{selectedFair.universityName}</span></div>}
+                    {(selectedFair.venue || selectedFair.address) && <div className="flex gap-3"><MapPin className="w-4 h-4 mt-0.5 shrink-0" /><span>{selectedFair.venue}{selectedFair.address && ` · ${selectedFair.address}`}</span></div>}
+                  </div>
+                  <div className="prose prose-sm max-w-none text-on-surface whitespace-pre-wrap">
+                    {selectedFair.description || '暂无活动描述'}
+                  </div>
+                  {selectedFair.requirements && <div className="mt-6"><h3 className="font-semibold text-on-surface mb-2">参与要求</h3><p className="text-sm text-on-surface-variant whitespace-pre-wrap">{selectedFair.requirements}</p></div>}
+                  {selectedFair.sourceUrl && <a href={selectedFair.sourceUrl} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 mt-8 text-sm font-medium text-primary hover:underline"><ExternalLink className="w-4 h-4" />查看原文</a>}
+                </>
+              )}
+              {!detailLoading && detailError && !selectedFair && <p className="text-sm text-error">无法加载活动详情</p>}
+            </motion.aside>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Pagination */}
       {!loading && !error && careerFairs.length > 0 && totalPages > 1 && (

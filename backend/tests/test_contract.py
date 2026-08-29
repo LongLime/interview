@@ -1,3 +1,5 @@
+from datetime import date, datetime, timedelta
+
 import httpx
 import pytest
 from fastapi.testclient import TestClient
@@ -10,6 +12,7 @@ from app.integrations import OpenAIClient
 from app.main import create_app
 from app.models import (
     AppUser,
+    CareerFair,
     InterviewAnswer,
     InterviewSession,
     Resume,
@@ -18,6 +21,7 @@ from app.models import (
     VoiceMessage,
     VoiceSession,
 )
+from app.voice_pipeline import exchange_webrtc_sdp
 
 
 def test_health_result_envelope_and_camel_case():
@@ -138,6 +142,192 @@ def test_resume_list_matches_frontend_contract():
     assert "originalFilename" not in item
 
 
+def test_career_fair_user_state_is_private_and_persistent():
+    config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
+    app = create_app(config)
+    with TestClient(app) as client:
+        first_user = client.post(
+            "/api/auth/register",
+            json={"username": "fair-user-a", "password": "secure-password", "nickname": "A"},
+        ).json()["data"]
+        second_user = client.post(
+            "/api/auth/register",
+            json={"username": "fair-user-b", "password": "secure-password", "nickname": "B"},
+        ).json()["data"]
+
+        async def seed_career_fair() -> None:
+            async with app.state.session_factory() as session:
+                session.add(
+                    CareerFair(
+                        external_id="test-fair",
+                        title="测试招聘会",
+                        company_name="测试公司",
+                        fair_date=datetime(2026, 9, 1).date(),
+                    )
+                )
+                await session.commit()
+
+        client.portal.call(seed_career_fair)
+        first_headers = {"Authorization": f"Bearer {first_user['token']}"}
+        second_headers = {"Authorization": f"Bearer {second_user['token']}"}
+        updated = client.put(
+            "/api/career-fair/1/state",
+            headers=first_headers,
+            json={"isFavorited": True, "isScheduled": True},
+        ).json()
+        first_state = client.get("/api/career-fair/1/state", headers=first_headers).json()
+        second_state = client.get("/api/career-fair/1/state", headers=second_headers).json()
+
+    assert updated["data"] == {"isFavorited": True, "isScheduled": True}
+    assert first_state["data"] == {"isFavorited": True, "isScheduled": True}
+    assert second_state["data"] == {"isFavorited": False, "isScheduled": False}
+
+
+def test_career_fair_favorites_and_recommendations_follow_user_preferences():
+    config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
+    app = create_app(config)
+    with TestClient(app) as client:
+        first_user = client.post(
+            "/api/auth/register",
+            json={"username": "recommend-a", "password": "secure-password", "nickname": "A"},
+        ).json()["data"]
+        second_user = client.post(
+            "/api/auth/register",
+            json={"username": "recommend-b", "password": "secure-password", "nickname": "B"},
+        ).json()["data"]
+
+        async def seed_career_fairs() -> None:
+            async with app.state.session_factory() as session:
+                session.add_all(
+                    [
+                        CareerFair(
+                            external_id="favorite-tech",
+                            title="科技行业双选会",
+                            company_name="未来科技",
+                            fair_date=date.today() + timedelta(days=2),
+                            fair_type="dual",
+                            industry="信息技术",
+                        ),
+                        CareerFair(
+                            external_id="recommended-tech",
+                            title="软件人才招聘会",
+                            company_name="另一家公司",
+                            fair_date=date.today() + timedelta(days=3),
+                            fair_type="dual",
+                            industry="信息技术",
+                        ),
+                        CareerFair(
+                            external_id="ended-tech",
+                            title="已结束技术招聘会",
+                            fair_date=date.today() - timedelta(days=1),
+                            industry="信息技术",
+                        ),
+                    ]
+                )
+                await session.commit()
+
+        client.portal.call(seed_career_fairs)
+        first_headers = {"Authorization": f"Bearer {first_user['token']}"}
+        second_headers = {"Authorization": f"Bearer {second_user['token']}"}
+        client.put(
+            "/api/career-fair/1/state",
+            headers=first_headers,
+            json={"isFavorited": True, "isScheduled": False},
+        )
+        first_favorites = client.get(
+            "/api/career-fair/favorites", headers=first_headers
+        ).json()["data"]
+        second_favorites = client.get(
+            "/api/career-fair/favorites", headers=second_headers
+        ).json()["data"]
+        recommendations = client.post(
+            "/api/career-fair/recommendations",
+            headers=first_headers,
+            json={"limit": 10},
+        ).json()["data"]
+
+    assert [item["title"] for item in first_favorites["content"]] == ["科技行业双选会"]
+    assert second_favorites["content"] == []
+    assert recommendations[0]["title"] == "科技行业双选会"
+    assert recommendations[0]["recommendScore"] > 0
+    assert "行业相似" in recommendations[0]["recommendReason"]
+    assert all(item["title"] != "已结束技术招聘会" for item in recommendations)
+
+
+def test_career_fair_schedule_crud_is_private():
+    config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
+    app = create_app(config)
+    with TestClient(app) as client:
+        first_user = client.post(
+            "/api/auth/register",
+            json={"username": "schedule-a", "password": "secure-password", "nickname": "A"},
+        ).json()["data"]
+        second_user = client.post(
+            "/api/auth/register",
+            json={"username": "schedule-b", "password": "secure-password", "nickname": "B"},
+        ).json()["data"]
+
+        async def seed_career_fair() -> None:
+            async with app.state.session_factory() as session:
+                session.add(
+                    CareerFair(
+                        external_id="schedule-fair",
+                        title="日程测试招聘会",
+                        company_name="测试公司",
+                        fair_date=date(2026, 9, 1),
+                    )
+                )
+                await session.commit()
+
+        client.portal.call(seed_career_fair)
+        first_headers = {"Authorization": f"Bearer {first_user['token']}"}
+        second_headers = {"Authorization": f"Bearer {second_user['token']}"}
+        created = client.post(
+            "/api/career-fair/schedules",
+            headers=first_headers,
+            json={
+                "careerFairId": 1,
+                "title": "参加招聘会",
+                "startTime": "2026-09-01T09:00:00",
+                "endTime": "2026-09-01T12:00:00",
+                "location": "主校区",
+                "notes": "准备简历",
+                "remindMinutes": 30,
+            },
+        ).json()
+        schedule_id = created["data"]["id"]
+        first_list = client.get("/api/career-fair/schedules", headers=first_headers).json()
+        second_list = client.get("/api/career-fair/schedules", headers=second_headers).json()
+        updated = client.put(
+            f"/api/career-fair/schedules/{schedule_id}",
+            headers=first_headers,
+            json={
+                "careerFairId": 1,
+                "title": "参加招聘会（已更新）",
+                "startTime": "2026-09-01T10:00:00",
+                "endTime": None,
+                "location": "线上",
+                "notes": None,
+                "remindMinutes": 15,
+            },
+        ).json()
+        forbidden_update = client.put(
+            f"/api/career-fair/schedules/{schedule_id}",
+            headers=second_headers,
+            json={"title": "越权", "startTime": "2026-09-01T09:00:00"},
+        ).json()
+        deleted = client.delete(
+            f"/api/career-fair/schedules/{schedule_id}", headers=first_headers
+        ).json()
+
+    assert created["data"]["careerFairId"] == 1
+    assert first_list["data"][0]["title"] == "参加招聘会"
+    assert second_list["data"] == []
+    assert updated["data"]["title"] == "参加招聘会（已更新）"
+    assert forbidden_update["code"] != 200
+    assert deleted["code"] == 200
+
+
 def test_interview_details_matches_frontend_contract():
     config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
     app = create_app(config)
@@ -181,6 +371,107 @@ def test_voice_websocket_has_stable_unsupported_asr_shape():
     with TestClient(app) as client:
         with client.websocket_connect("/ws/voice-interview/999") as socket:
             assert socket.receive_json() == {"type": "error", "message": "语音面试会话不存在"}
+
+
+@pytest.mark.anyio
+async def test_webrtc_sdp_exchange_uses_workspace_region_endpoint(monkeypatch):
+    async def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url == (
+            "https://workspace-123.cn-beijing.maas.aliyuncs.com/api/v1/webrtc/realtime"
+            "?model=qwen3.5-omni-flash-realtime"
+        )
+        assert request.headers["Authorization"] == "Bearer test-key"
+        assert request.headers["Content-Type"] == "application/sdp"
+        assert await request.aread() == b"v=0\r\n"
+        return httpx.Response(200, text="v=0\r\na=setup:active\r\n")
+
+    original_client = httpx.AsyncClient
+    transport = httpx.MockTransport(handler)
+    monkeypatch.setattr(
+        "app.voice_pipeline.httpx.AsyncClient",
+        lambda **kwargs: original_client(transport=transport, **kwargs),
+    )
+    config = Settings(
+        ai_bailian_api_key="test-key",
+        ai_bailian_workspace_id="workspace-123",
+        ai_bailian_realtime_region="cn-beijing",
+    )
+
+    answer = await exchange_webrtc_sdp(config, "v=0\r\n")
+
+    assert answer == "v=0\r\na=setup:active\r\n"
+
+
+@pytest.mark.anyio
+async def test_webrtc_sdp_exchange_requires_workspace_id():
+    config = Settings(ai_bailian_api_key="test-key", ai_bailian_workspace_id=None)
+
+    with pytest.raises(RuntimeError, match="AI_BAILIAN_WORKSPACE_ID"):
+        await exchange_webrtc_sdp(config, "v=0\r\n")
+
+
+def test_voice_webrtc_exchange_and_transcript_persistence(monkeypatch):
+    config = Settings(database_url="sqlite+aiosqlite:///:memory:", auto_create_tables=True)
+    app = create_app(config)
+
+    async def fake_exchange(settings, offer_sdp):
+        assert offer_sdp == "v=0\r\n"
+        return "v=0\r\na=setup:active\r\n"
+
+    monkeypatch.setattr("app.api.exchange_webrtc_sdp", fake_exchange)
+
+    with TestClient(app) as client:
+        registered = client.post(
+            "/api/auth/register",
+            json={
+                "username": "voiceuser",
+                "password": "secure-password",
+                "nickname": "Voice User",
+            },
+        ).json()
+        token = registered["data"]["token"]
+
+        async def seed_voice_session() -> None:
+            async with app.state.session_factory() as session:
+                session.add(
+                    VoiceSession(
+                        id=1,
+                        role_type="TECHNICAL_INTERVIEWER",
+                        skill_id="java-backend",
+                        difficulty="mid",
+                        status="IN_PROGRESS",
+                        current_phase="INTRO",
+                    )
+                )
+                await session.commit()
+
+        client.portal.call(seed_voice_session)
+        exchange = client.post(
+            "/api/voice-interview/sessions/1/webrtc/sdp",
+            json={"offerSdp": "v=0\r\n"},
+        ).json()
+        appended = client.post(
+            "/api/voice-interview/sessions/1/messages",
+            headers={"Authorization": f"Bearer {token}"},
+            json={"messageType": "USER", "userText": "我负责过支付链路重构。"},
+        ).json()
+
+        async def load_message() -> VoiceMessage | None:
+            async with app.state.session_factory() as session:
+                return await session.scalar(
+                    select(VoiceMessage).where(VoiceMessage.session_id == 1)
+                )
+
+        message = client.portal.call(load_message)
+
+    assert exchange["code"] == 200
+    assert exchange["data"]["answerSdp"] == "v=0\r\na=setup:active\r\n"
+    assert exchange["data"]["model"] == "qwen3.5-omni-flash-realtime"
+    assert "java-backend" in exchange["data"]["instructions"]
+    assert appended["code"] == 200
+    assert message is not None
+    assert message.user_recognized_text == "我负责过支付链路重构。"
+    assert message.sequence_num == 1
 
 
 def test_voice_evaluation_persists_completed_report(monkeypatch):

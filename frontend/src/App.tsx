@@ -1,3 +1,4 @@
+import CareerFairSchedulePage from './pages/CareerFairSchedulePage';
 import { BrowserRouter, Navigate, Route, Routes, useLocation, useNavigate, useOutletContext, useParams } from 'react-router-dom';
 import Layout from './components/Layout';
 import { useEffect, useState, Suspense, lazy } from 'react';
@@ -266,6 +267,7 @@ function AppRoutes() {
 
             {/* 招聘活动列表；保留旧路径兼容历史书签 */}
             <Route path="recruitment-events" element={<CareerFairPage />} />
+            <Route path="recruitment-events/schedule" element={<CareerFairSchedulePage />} />
             <Route path="career-fair" element={<CareerFairPage />} />
 
             {/* 招聘活动抓取任务管理 */}

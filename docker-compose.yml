@@ -159,6 +159,8 @@ services:
       # === AI 模型配置 (必须配置) ===
       # 这里的变量值来自宿主机的环境变量或 .env 文件
       AI_BAILIAN_API_KEY: ${AI_BAILIAN_API_KEY}
+      AI_BAILIAN_WORKSPACE_ID: ${AI_BAILIAN_WORKSPACE_ID}
+      AI_BAILIAN_REALTIME_REGION: ${AI_BAILIAN_REALTIME_REGION:-cn-beijing}
       AI_MODEL: ${AI_MODEL:-qwen3.5-flash}
       AI_BASE_URL: ${AI_BASE_URL:-https://dashscope.aliyuncs.com/compatible-mode/v1}
 
