@@ -1,5 +1,10 @@
 # AI Interview Platform 编码规范
 
+> 当前运行架构：`frontend/` 是电脑端，默认调用同工作区 `job_app/backend` 的统一 API（本地
+> 联调端口 `8081`）。本文件中的 Spring Boot 规范只适用于保留的 `app/` legacy reference，
+> 不适用于 `frontend/`、`backend/` 或 `job_app/backend/`。修改当前运行路径时，应遵循各目录
+> 自身的语言、构建工具和测试约定。
+
 Spring Boot 4.0 + Java 21 + Spring AI + React 面试平台。写代码时必须遵守以下规则。
 
 ---

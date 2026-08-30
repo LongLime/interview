@@ -1,4 +1,9 @@
-# 🔑 API 密钥配置指南
+# API 密钥配置指南
+
+> 当前桌面端 `frontend/` 由 `job_app/backend` 提供统一 API。请把运行时密钥配置在
+> `job_app/backend/.env` 或启动该服务的进程环境中，优先使用 `DASHSCOPE_API_KEY`；统一后端
+> 也兼容旧变量名 `AI_BAILIAN_API_KEY`。本文件其余内容仅适用于保留的 `interview/backend`
+> 独立模式，切勿在任何文档或 Git 中写入真实密钥。
 
 语音面试功能需要配置以下 API 密钥才能正常工作。
 
@@ -22,7 +27,7 @@
 
 **配置变量**:
 ```bash
-AI_BAILIAN_API_KEY=sk-xxxxxxxxxxxxxxxxxxxxxxxx
+AI_BAILIAN_API_KEY=your-api-key
 AI_BAILIAN_WORKSPACE_ID=your-workspace-id
 AI_BAILIAN_REALTIME_REGION=cn-beijing
 ```
@@ -51,7 +56,7 @@ cp .env.example .env
 2. 编辑 `.env` 文件，填入您的实际密钥：
 ```bash
 # 使用您自己的密钥替换以下占位符
-AI_BAILIAN_API_KEY=sk-your-actual-key-here
+AI_BAILIAN_API_KEY=your-api-key
 
 # 可选：选择不同的 LLM 模型
 AI_MODEL=qwen3.5-flash  # 默认值，也可改为 qwen3.5-plus、qwen-max 等
@@ -63,11 +68,11 @@ AI_MODEL=qwen3.5-flash  # 默认值，也可改为 qwen3.5-plus、qwen-max 等
 
 ```bash
 # Linux/Mac
-export AI_BAILIAN_API_KEY=sk-your-key
+export AI_BAILIAN_API_KEY=your-api-key
 export AI_MODEL=qwen3.5-flash  # 可选
 
 # Windows PowerShell
-$env:AI_BAILIAN_API_KEY="sk-your-key"
+$env:AI_BAILIAN_API_KEY="your-api-key"
 $env:AI_MODEL="qwen3.5-flash"  # 可选
 ```
 

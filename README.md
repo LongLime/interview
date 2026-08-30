@@ -8,8 +8,10 @@
 [![React](https://img.shields.io/badge/React-18.3-blue?logo=react)](https://react.dev/)
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-pgvector-336791?logo=postgresql)](https://www.postgresql.org/)
 
-> 当前主后端位于 `backend/`。根目录 `app/` 中的 Spring Boot 源码仅作为 legacy
-> reference 保留，不由 `docker-compose.yml` 构建，也不应继续承载新功能。
+> 当前桌面端运行路径为 `frontend/ -> job_app/backend`：`frontend/` 通过 Vite 代理调用同一
+> 工作区 `job_app/backend` 的统一 API（本地联调端口 `8081`），与 job_app 学生端共用接口和
+> 数据。此仓库的 `backend/` 仍保留为可独立运行的原有面试平台后端；根目录 `app/` 中的
+> Spring Boot 源码仅作为 legacy reference 保留。
 
 ## 功能
 
@@ -40,7 +42,8 @@
 
 ```text
 interview/
-|-- backend/                         # 当前 Python/FastAPI 后端
+|-- frontend/                        # 当前桌面端 React 前端，默认代理到 ../job_app/backend:8081
+|-- backend/                         # 保留的独立 Python/FastAPI 后端（默认 8080）
 |   |-- app/
 |   |   |-- main.py                  # 应用入口、生命周期和路由注册
 |   |   |-- api.py                   # 认证、简历、面试、知识库等 API
@@ -54,7 +57,6 @@ interview/
 |   |-- tests/                       # 后端测试
 |   |-- pyproject.toml
 |   `-- uv.lock
-|-- frontend/                        # React 前端
 |-- app/                             # 旧 Spring Boot 参考代码
 |-- docker-compose.yml
 |-- .env.example
@@ -85,7 +87,9 @@ interview/
 
 ## 配置
 
-从 `.env.example` 创建根目录 `.env`。不要提交真实密钥。
+`backend/` 独立模式从 `.env.example` 创建根目录 `.env`。不要提交真实密钥。当前桌面端联调
+应将 AI 和数据库配置放在 `job_app/backend/.env`；统一后端优先读取 `DASHSCOPE_API_KEY`，并
+兼容读取旧变量 `AI_BAILIAN_API_KEY`。
 
 至少配置安全的 JWT Secret；需要 AI 功能时配置 DashScope 或其他 OpenAI-compatible
 Provider：
@@ -110,7 +114,26 @@ APP_STORAGE_BUCKET=interview-guide
 未设置 `DATABASE_URL` 时，后端使用 `POSTGRES_HOST`、`POSTGRES_PORT`、`POSTGRES_DB`、
 `POSTGRES_USER` 和 `POSTGRES_PASSWORD` 组合连接地址。
 
-## 本地开发
+## 当前桌面端本地开发
+
+先启动统一后端，再启动本仓库桌面端。桌面端默认将 `/api` 和 `/ws` 代理至 `8081`；可用
+`VITE_DEV_API_TARGET` 与 `VITE_DEV_WS_TARGET` 覆盖目标地址。
+
+```bash
+cd ../job_app/backend
+uv sync
+uv run uvicorn main:app --reload --host 127.0.0.1 --port 8081
+
+cd ../../interview/frontend
+pnpm install
+pnpm dev
+```
+
+- 桌面端：<http://127.0.0.1:5173>
+- 统一 API：<http://127.0.0.1:8081>
+- 统一 API 文档：<http://127.0.0.1:8081/docs>
+
+## 保留后端的独立本地开发
 
 环境要求：Python 3.11+、uv、Node.js 18+、pnpm 10+。推荐使用 Docker 启动 PostgreSQL、
 Redis 和 MinIO。
@@ -124,7 +147,7 @@ cd backend
 uv sync
 uv run alembic upgrade head
 
-# 启动 API
+# 启动保留的独立 API
 uv run uvicorn app.main:app --reload --host 127.0.0.1 --port 8080
 ```
 
