@@ -53,7 +53,7 @@ export default function Interview({
 
   const questionCount = initialConfig?.questionCount ?? 8;
   const llmProvider = initialConfig?.llmProvider ?? '';
-  const skillId = initialConfig?.skillId ?? 'java-backend';
+  const skillId = initialConfig?.skillId ?? 'java';
   const difficulty = initialConfig?.difficulty ?? 'mid';
   const customCategories = initialConfig?.customCategories;
   const jdText = initialConfig?.jdText;
@@ -175,8 +175,26 @@ export default function Interview({
           category: response.nextQuestion!.category,
           questionIndex: response.nextQuestion!.questionIndex
         }]);
-      } else {
+      } else if (currentQuestion.questionIndex + 1 >= questionCount) {
+        await interviewApi.completeInterview(session.sessionId);
         onInterviewComplete();
+      } else {
+        const nextQuestion = await interviewApi.nextQuestion(
+          session.sessionId,
+          currentQuestion.questionIndex,
+        );
+        setCurrentQuestion(nextQuestion);
+        setSession(previous => previous ? {
+          ...previous,
+          currentQuestionIndex: nextQuestion.questionIndex,
+          questions: [...previous.questions, nextQuestion],
+        } : previous);
+        setMessages(prev => [...prev, {
+          type: 'interviewer',
+          content: nextQuestion.question,
+          category: nextQuestion.category,
+          questionIndex: nextQuestion.questionIndex,
+        }]);
       }
     } catch (err) {
       setError('提交答案失败，请重试');
@@ -239,7 +257,21 @@ export default function Interview({
     );
   }
 
-  if (!session || !currentQuestion) return null;
+  if (!session || !currentQuestion) {
+    return (
+      <div className="flex items-center justify-center min-h-[50vh]">
+        <div className="text-center">
+          <p className="text-red-500 dark:text-red-400 mb-4">未能加载面试题目，请重新开始。</p>
+          <button
+            onClick={onBack}
+            className="px-5 py-2 bg-surface-container text-on-surface rounded-lg hover:bg-surface-container-high"
+          >
+            返回
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="pb-10">

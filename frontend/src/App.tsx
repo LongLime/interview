@@ -30,6 +30,9 @@ const ContributionSubmitPage = lazy(() => import('./pages/ContributionSubmitPage
 const ContributionDetailPage = lazy(() => import('./pages/ContributionDetailPage'));
 const CareerFairPage = lazy(() => import('./pages/CareerFairPage'));
 const ScrapeTaskPage = lazy(() => import('./pages/ScrapeTaskPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const DashboardOverviewPage = lazy(() => import('./pages/DashboardOverviewPage'));
+const DashboardCollegePage = lazy(() => import('./pages/DashboardCollegePage'));
 const LoginPage = lazy(() => import('./pages/LoginPage'));
 const RegisterPage = lazy(() => import('./pages/RegisterPage'));
 
@@ -252,6 +255,13 @@ function AppRoutes() {
 
             {/* 设置 */}
             <Route path="settings" element={<SettingsPage />} />
+
+            {/* 个人中心 */}
+            <Route path="profile" element={<ProfilePage />} />
+
+            {/* 数据看板 */}
+            <Route path="dashboard/overview" element={<DashboardOverviewPage />} />
+            <Route path="dashboard/college" element={<DashboardCollegePage />} />
 
             {/* 问答助手（知识库聊天） */}
             <Route path="knowledgebase/chat" element={<KnowledgeBaseQueryPageWrapper />} />

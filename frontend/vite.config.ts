@@ -3,6 +3,9 @@ import react from '@vitejs/plugin-react'
 import wasm from 'vite-plugin-wasm'
 import topLevelAwait from 'vite-plugin-top-level-await'
 
+const apiTarget = process.env.VITE_DEV_API_TARGET || 'http://127.0.0.1:8081';
+const wsTarget = process.env.VITE_DEV_WS_TARGET || apiTarget.replace(/^http/, 'ws');
+
 // https://vitejs.dev/config/
 export default defineConfig({
   plugins: [
@@ -26,11 +29,11 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://localhost:8080',
+        target: apiTarget,
         changeOrigin: true,
       },
       '/ws': {
-        target: 'ws://localhost:8080',
+        target: wsTarget,
         ws: true,
         changeOrigin: true,
       },

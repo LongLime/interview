@@ -19,6 +19,19 @@ type VoiceConfig = {
   llmProvider?: string;
 };
 
+type BrowserRecognition = {
+  lang: string;
+  continuous: boolean;
+  interimResults: boolean;
+  onresult: ((event: any) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+};
+
+type BrowserRecognitionConstructor = new () => BrowserRecognition;
+
 export default function VoiceInterviewPage() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -42,7 +55,7 @@ export default function VoiceInterviewPage() {
       }
     : undefined;
   const presetVoiceConfig = entryState.voiceConfig ?? queryVoiceConfig;
-  const effectiveSkillId = presetVoiceConfig?.skillId ?? urlSkillId ?? 'java-backend';
+  const effectiveSkillId = presetVoiceConfig?.skillId ?? urlSkillId ?? 'java';
 
   const [callStatus, setCallStatus] = useState<'idle' | 'connecting' | 'in-call' | 'ended'>('idle');
   const [currentTime, setCurrentTime] = useState(0);
@@ -57,22 +70,24 @@ export default function VoiceInterviewPage() {
   const [templateName, setTemplateName] = useState<string>('');
   const [skills, setSkills] = useState<SkillDTO[]>([]);
 
-  // WebRTC 通话相关 refs
-  const pcRef = useRef<RTCPeerConnection | null>(null);
-  const dcRef = useRef<RTCDataChannel | null>(null);
-  const audioSenderRef = useRef<RTCRtpSender | null>(null);
+  const wsRef = useRef<WebSocket | null>(null);
   const localStreamRef = useRef<MediaStream | null>(null);
-  const remoteAudioRef = useRef<HTMLAudioElement | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const autoStartRef = useRef(false);
   const endedByUserRef = useRef(false);
+  const terminalErrorRef = useRef(false);
+  const browserRecognitionRef = useRef<BrowserRecognition | null>(null);
+  const browserVoiceModeRef = useRef(false);
+  const browserRecognitionPausedRef = useRef(false);
+  const lastBrowserSubmitRef = useRef({ text: '', at: 0 });
+  const audioQueueRef = useRef<string[]>([]);
+  const audioPlayingRef = useRef(false);
+  const currentAudioRef = useRef<{ audio: HTMLAudioElement; sourceUrl: string } | null>(null);
+  const awaitingAiReplyRef = useRef(false);
+  const lastSubmittedTextRef = useRef('');
   const sessionIdRef = useRef<number | null>(null);
-  const configRef = useRef<{ model: string; voice: string; instructions: string }>({
-    model: '',
-    voice: 'Tina',
-    instructions: '',
-  });
-
   useEffect(() => { sessionIdRef.current = sessionId; }, [sessionId]);
 
   const startTimer = useCallback(() => {
@@ -101,18 +116,31 @@ export default function VoiceInterviewPage() {
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
-    try { dcRef.current?.close(); } catch {}
-    dcRef.current = null;
-    try { pcRef.current?.close(); } catch {}
-    pcRef.current = null;
-    audioSenderRef.current = null;
+    try { wsRef.current?.close(); } catch {}
+    wsRef.current = null;
+    browserVoiceModeRef.current = false;
+    browserRecognitionPausedRef.current = false;
+    lastBrowserSubmitRef.current = { text: '', at: 0 };
+    audioQueueRef.current = [];
+    audioPlayingRef.current = false;
+    if (currentAudioRef.current) {
+      currentAudioRef.current.audio.onended = null;
+      currentAudioRef.current.audio.onerror = null;
+      currentAudioRef.current.audio.pause();
+      URL.revokeObjectURL(currentAudioRef.current.sourceUrl);
+      currentAudioRef.current = null;
+    }
+    awaitingAiReplyRef.current = false;
+    lastSubmittedTextRef.current = '';
+    try { browserRecognitionRef.current?.stop(); } catch {}
+    browserRecognitionRef.current = null;
+    try { audioProcessorRef.current?.disconnect(); } catch {}
+    audioProcessorRef.current = null;
+    try { audioContextRef.current?.close(); } catch {}
+    audioContextRef.current = null;
     if (localStreamRef.current) {
       localStreamRef.current.getTracks().forEach((t) => t.stop());
       localStreamRef.current = null;
-    }
-    if (remoteAudioRef.current) {
-      try { remoteAudioRef.current.pause(); } catch {}
-      remoteAudioRef.current.srcObject = null;
     }
   }, []);
 
@@ -123,8 +151,6 @@ export default function VoiceInterviewPage() {
       ...prev,
       { role: 'user', text: normalized, id: `user-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
     ]);
-    const id = sessionIdRef.current;
-    if (id) voiceInterviewApi.appendMessage(id, { messageType: 'USER', userText: normalized }).catch(() => {});
   }, []);
 
   const commitAiMessage = useCallback((text: string) => {
@@ -134,158 +160,225 @@ export default function VoiceInterviewPage() {
       ...prev,
       { role: 'ai', text: normalized, id: `ai-${Date.now()}-${Math.random().toString(36).slice(2, 8)}` },
     ]);
-    const id = sessionIdRef.current;
-    if (id) voiceInterviewApi.appendMessage(id, { messageType: 'AI', aiText: normalized }).catch(() => {});
   }, []);
 
-  const normalizeSdp = (sdp: string) => {
-    let s = String(sdp).trim().replace(/\r?\n/g, '\r\n');
-    if (!s.endsWith('\r\n')) s += '\r\n';
-    return s;
+  const sendUserText = useCallback((text: string) => {
+    const normalized = text.trim();
+    if (!normalized) return;
+    if (awaitingAiReplyRef.current || lastSubmittedTextRef.current === normalized) return;
+    awaitingAiReplyRef.current = true;
+    lastSubmittedTextRef.current = normalized;
+    commitUserMessage(normalized);
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'control',
+        action: 'submit',
+        data: { text: normalized },
+      }));
+    } else {
+      awaitingAiReplyRef.current = false;
+    }
+  }, [commitUserMessage]);
+
+  const speakBrowserText = useCallback((text: string) => {
+    if (!browserVoiceModeRef.current || !('speechSynthesis' in window)) return;
+    browserRecognitionPausedRef.current = true;
+    try { browserRecognitionRef.current?.stop(); } catch {}
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(text);
+    utterance.lang = 'zh-CN';
+    utterance.onstart = () => setIsAiSpeaking(true);
+    utterance.onend = () => {
+      setIsAiSpeaking(false);
+      browserRecognitionPausedRef.current = false;
+      try { browserRecognitionRef.current?.start(); } catch {}
+    };
+    window.speechSynthesis.speak(utterance);
+  }, []);
+
+  const startBrowserVoiceMode = useCallback(() => {
+    const browserWindow = window as Window & {
+      SpeechRecognition?: BrowserRecognitionConstructor;
+      webkitSpeechRecognition?: BrowserRecognitionConstructor;
+    };
+    const Recognition = browserWindow.SpeechRecognition || browserWindow.webkitSpeechRecognition;
+    if (!Recognition) {
+      setError('当前浏览器不支持语音识别，请使用 Chrome 或 Edge');
+      return;
+    }
+    browserVoiceModeRef.current = true;
+    browserRecognitionPausedRef.current = false;
+    const recognition = new Recognition();
+    recognition.lang = 'zh-CN';
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.onresult = (event) => {
+      let interimText = '';
+      let finalText = '';
+      for (let index = event.resultIndex; index < event.results.length; index += 1) {
+        const result = event.results[index];
+        const transcript = result?.[0]?.transcript || '';
+        if (result.isFinal) finalText += transcript;
+        else interimText += transcript;
+      }
+      if (interimText) setUserText(interimText);
+      if (finalText.trim()) {
+        const normalizedFinalText = finalText.trim();
+        const now = Date.now();
+        const lastSubmit = lastBrowserSubmitRef.current;
+        if (lastSubmit.text === normalizedFinalText && now - lastSubmit.at < 1500) return;
+        lastBrowserSubmitRef.current = { text: normalizedFinalText, at: now };
+        setUserText(normalizedFinalText);
+        sendUserText(normalizedFinalText);
+      }
+    };
+    recognition.onerror = () => setError('浏览器语音识别暂时中断，请继续说话');
+    recognition.onend = () => {
+      if (browserVoiceModeRef.current && !browserRecognitionPausedRef.current) {
+        try { recognition.start(); } catch {}
+      }
+    };
+    browserRecognitionRef.current = recognition;
+    try { recognition.start(); } catch { setError('无法启动浏览器语音识别'); }
+  }, [sendUserText]);
+
+  const decodeBase64 = (value: string) => {
+    const binary = atob(value);
+    const bytes = new Uint8Array(binary.length);
+    for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+    return bytes;
   };
 
-  const sendSessionUpdate = useCallback(() => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== 'open') return;
-    const { voice, instructions } = configRef.current;
-    dc.send(JSON.stringify({
-      event_id: `event_${Date.now()}`,
-      type: 'session.update',
-      session: {
-        modalities: ['text', 'audio'],
-        voice,
-        instructions,
-        enable_input_audio_transcription: true,
-        input_audio_transcription_model: 'qwen3-asr-flash-realtime',
-        input_audio_transcription: { model: 'qwen3-asr-flash-realtime' },
-        turn_detection: { type: 'semantic_vad', threshold: 0.5, silence_duration_ms: 800 },
-      },
-    }));
+  const playAudio = useCallback((value: string) => {
+    audioQueueRef.current.push(value);
+    if (audioPlayingRef.current) return;
+
+    const playNext = () => {
+      const next = audioQueueRef.current.shift();
+      if (!next) {
+        audioPlayingRef.current = false;
+        setIsAiSpeaking(false);
+        return;
+      }
+      audioPlayingRef.current = true;
+      setIsAiSpeaking(true);
+      const sourceUrl = URL.createObjectURL(new Blob([decodeBase64(next)], { type: 'audio/wav' }));
+      const audio = new Audio(sourceUrl);
+      currentAudioRef.current = { audio, sourceUrl };
+      let finished = false;
+      const finish = () => {
+        if (finished) return;
+        finished = true;
+        URL.revokeObjectURL(sourceUrl);
+        if (currentAudioRef.current?.audio === audio) currentAudioRef.current = null;
+        playNext();
+      };
+      audio.onended = finish;
+      audio.onerror = finish;
+      audio.play().catch(finish);
+    };
+
+    playNext();
   }, []);
 
-  const triggerOpening = useCallback(() => {
-    const dc = dcRef.current;
-    if (!dc || dc.readyState !== 'open') return;
-    dc.send(JSON.stringify({ event_id: `event_${Date.now()}`, type: 'response.create' }));
-  }, []);
-
-  const handleDcMessage = useCallback((raw: string) => {
+  const handleSocketMessage = useCallback((raw: string) => {
     let obj: any;
     try { obj = JSON.parse(raw); } catch { return; }
     const type: string | undefined = obj?.type;
     switch (type) {
-      case 'session.created': {
-        const track = localStreamRef.current?.getAudioTracks()[0];
-        const sender = audioSenderRef.current;
-        if (sender && track) {
-          sender.replaceTrack(track).catch(() => {});
+      case 'control':
+        if (obj.action === 'asr_ready') {
+          setCallStatus('in-call');
+          startTimer();
         }
-        sendSessionUpdate();
-        break;
-      }
-      case 'session.updated':
-        triggerOpening();
-        break;
-      case 'conversation.item.input_audio_transcription.delta':
-        setUserText((obj.text || '') + (obj.stash || ''));
-        break;
-      case 'conversation.item.input_audio_transcription.completed': {
-        const transcript = (obj.transcript || '').trim();
-        if (transcript) {
-          setUserText(transcript);
-          commitUserMessage(transcript);
+        if (obj.action === 'voice_unavailable') {
+          setError(null);
+          setCallStatus('in-call');
+          startTimer();
+          startBrowserVoiceMode();
         }
         break;
-      }
-      case 'response.created':
+      case 'subtitle':
+        setUserText((prev) => obj.isFinal ? (obj.text || '') : prev + (obj.text || ''));
+        if (obj.isFinal && obj.text?.trim()) {
+          sendUserText(obj.text);
+        }
+        break;
+      case 'text':
         setIsAiSpeaking(true);
-        setAiText('');
-        break;
-      case 'response.audio_transcript.delta':
-        setAiText((prev) => prev + (obj.delta || ''));
-        break;
-      case 'response.audio_transcript.done': {
-        const transcript = (obj.transcript || '').trim();
-        setIsAiSpeaking(false);
-        if (transcript) {
-          setAiText(transcript);
-          commitAiMessage(transcript);
+        setAiText((prev) => obj.final ? (obj.content || '') : prev + (obj.content || ''));
+        if (obj.final && obj.content?.trim()) {
+          awaitingAiReplyRef.current = false;
+          setIsAiSpeaking(false);
+          commitAiMessage(obj.content);
+          speakBrowserText(obj.content);
+          setUserText('');
         }
-        setUserText('');
         break;
-      }
-      case 'input_audio_buffer.speech_started':
-        setIsAiSpeaking(false);
+      case 'audio':
+        if (obj.data) playAudio(obj.data);
         break;
       case 'error': {
-        const err = obj?.error;
-        setError(err?.message || err?.code || '通话出错');
+        awaitingAiReplyRef.current = false;
+        const message = obj.message || obj.error?.message || '通话出错';
+        if (!message.includes('实时语音识别')) setError(message);
         break;
       }
       default:
         break;
     }
-  }, [commitAiMessage, commitUserMessage, sendSessionUpdate, triggerOpening]);
+  }, [commitAiMessage, playAudio, sendUserText, speakBrowserText, startBrowserVoiceMode, startTimer, teardownCall]);
 
-  const establishWebRtc = useCallback(async (sid: number) => {
+  const establishWebSocket = useCallback(async (sid: number) => {
+    terminalErrorRef.current = false;
+    const session = await voiceInterviewApi.getSession(sid);
     const stream = await navigator.mediaDevices.getUserMedia({
       audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
     });
     localStreamRef.current = stream;
-
-    const pc = new RTCPeerConnection({ iceServers: [] });
-    pcRef.current = pc;
-    const audioTrack = stream.getAudioTracks()[0];
-    if (!audioTrack) throw new Error('未检测到可用的麦克风音轨');
-    audioSenderRef.current = pc.addTrack(audioTrack, stream);
-
-    const dc = pc.createDataChannel('oai-events');
-    dcRef.current = dc;
-    dc.onmessage = (e) => handleDcMessage(e.data);
-
-    pc.ontrack = (e) => {
-      const remoteStream = e.streams[0];
-      if (remoteAudioRef.current) {
-        remoteAudioRef.current.srcObject = remoteStream;
-        remoteAudioRef.current.play().catch(() => {});
-      }
-    };
-
-    pc.onconnectionstatechange = () => {
-      if (!pcRef.current) return;
-      const state = pc.connectionState;
-      if (state === 'connected') {
-        setCallStatus('in-call');
-        startTimer();
-      } else if (state === 'failed' || state === 'closed' || state === 'disconnected') {
-        if (!endedByUserRef.current) {
-          setCallStatus('ended');
-          setError('通话连接已断开');
-        }
-      }
-    };
-
-    // 门控：收到 session.created 前阻断音频发送
-    const sender = audioSenderRef.current;
-    if (sender) await sender.replaceTrack(null);
-
-    const offer = await pc.createOffer();
-    await pc.setLocalDescription(offer);
-    await new Promise<void>((resolve) => {
-      if (pc.iceGatheringState === 'complete') resolve();
-      else pc.onicegatheringstatechange = () => { if (pc.iceGatheringState === 'complete') resolve(); };
+    const websocketUrl = session.webSocketUrl.replace(/^http/, 'ws');
+    const ws = new WebSocket(websocketUrl);
+    wsRef.current = ws;
+    await new Promise<void>((resolve, reject) => {
+      const handleOpen = () => resolve();
+      const handleError = () => reject(new Error('无法建立语音连接'));
+      ws.addEventListener('open', handleOpen, { once: true });
+      ws.addEventListener('error', handleError, { once: true });
     });
-    const offerSdp = pc.localDescription?.sdp;
-    if (!offerSdp) throw new Error('无法生成 Offer SDP');
-
-    const exchange = await voiceInterviewApi.exchangeSdp(sid, offerSdp);
-    configRef.current = {
-      model: exchange.model,
-      voice: exchange.voice,
-      instructions: exchange.instructions,
+    ws.onmessage = (event) => handleSocketMessage(event.data);
+    ws.onerror = () => setError('语音连接失败，请检查后端和业务空间配置');
+    ws.onclose = () => {
+      if (!endedByUserRef.current && !terminalErrorRef.current) {
+        teardownCall();
+        setCallStatus('ended');
+        setError('语音连接已断开');
+      }
     };
-    await pc.setRemoteDescription({ type: 'answer', sdp: normalizeSdp(exchange.answerSdp) });
-  }, [handleDcMessage, startTimer]);
+
+    const audioContext = new AudioContext({ sampleRate: 16000 });
+    const source = audioContext.createMediaStreamSource(stream);
+    const processor = audioContext.createScriptProcessor(4096, 1, 1);
+    const mute = audioContext.createGain();
+    mute.gain.value = 0;
+    processor.onaudioprocess = (event) => {
+      if (ws.readyState !== WebSocket.OPEN) return;
+      const samples = event.inputBuffer.getChannelData(0);
+      const pcm = new Int16Array(samples.length);
+      for (let index = 0; index < samples.length; index += 1) {
+        const sample = Math.max(-1, Math.min(1, samples[index]));
+        pcm[index] = sample < 0 ? sample * 0x8000 : sample * 0x7fff;
+      }
+      const bytes = new Uint8Array(pcm.buffer);
+      let binary = '';
+      for (let index = 0; index < bytes.length; index += 1) binary += String.fromCharCode(bytes[index]);
+      ws.send(JSON.stringify({ type: 'audio', data: btoa(binary) }));
+    };
+    source.connect(processor);
+    processor.connect(mute);
+    mute.connect(audioContext.destination);
+    audioContextRef.current = audioContext;
+    audioProcessorRef.current = processor;
+  }, [handleSocketMessage, teardownCall]);
 
   const startCall = useCallback(async (config: VoiceConfig) => {
     setError(null);
@@ -304,13 +397,14 @@ export default function VoiceInterviewPage() {
       });
       setSessionId(session.sessionId);
       setCurrentPhase(session.currentPhase);
-      await establishWebRtc(session.sessionId);
+      await establishWebSocket(session.sessionId);
     } catch (err) {
       console.error('[WebRTC] startCall failed:', err);
+      teardownCall();
       setError(err instanceof Error ? err.message : '建立通话失败，请重试');
       setCallStatus('ended');
     }
-  }, [establishWebRtc]);
+  }, [establishWebSocket]);
 
   const resumeCall = useCallback(async (id: number) => {
     setError(null);
@@ -334,13 +428,14 @@ export default function VoiceInterviewPage() {
         if (user) restored.push({ role: 'user', text: user, id: `user-${msg.id}` });
       }
       setMessages(restored);
-      await establishWebRtc(session.sessionId);
+      await establishWebSocket(session.sessionId);
     } catch (err) {
       console.error('[WebRTC] resumeCall failed:', err);
+      teardownCall();
       setError(err instanceof Error ? err.message : '恢复通话失败，请重试');
       setCallStatus('ended');
     }
-  }, [establishWebRtc]);
+  }, [establishWebSocket, teardownCall]);
 
   // 技能加载 + 模板名
   useEffect(() => {
@@ -578,7 +673,6 @@ export default function VoiceInterviewPage() {
         </div>
       </div>
 
-      <audio ref={remoteAudioRef} autoPlay playsInline className="hidden" />
     </div>
   );
 }

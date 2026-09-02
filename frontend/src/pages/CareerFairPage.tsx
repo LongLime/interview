@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Calendar,
@@ -31,6 +31,7 @@ type FeedMode = 'all' | 'recommended' | 'favorites';
 
 export default function CareerFairPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [careerFairs, setCareerFairs] = useState<CareerFairListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -38,7 +39,9 @@ export default function CareerFairPage() {
   const [page, setPage] = useState(0);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
-  const [feedMode, setFeedMode] = useState<FeedMode>('all');
+  const [feedMode, setFeedMode] = useState<FeedMode>(() => (
+    new URLSearchParams(location.search).get('tab') === 'favorites' ? 'favorites' : 'all'
+  ));
   const [recommendReasons, setRecommendReasons] = useState<Record<number, string>>({});
   const [showFilters, setShowFilters] = useState(false);
   const [fairType, setFairType] = useState('');
@@ -61,9 +64,10 @@ export default function CareerFairPage() {
     setDetailError('');
     setDetailLoading(true);
     try {
+      const source = fair.externalId.startsWith('external-') ? 'external' : 'internal';
       const [detail, state] = await Promise.all([
-        careerFairApi.getCareerFairById(fair.id),
-        careerFairApi.getCareerFairState(fair.id),
+        careerFairApi.getCareerFairById(fair.id, source),
+        careerFairApi.getCareerFairState(fair.id, source),
       ]);
       setSelectedFair(detail);
       setFairState(state);
@@ -81,7 +85,8 @@ export default function CareerFairPage() {
     setFairState(nextState);
     setStateSaving(true);
     try {
-      const savedState = await careerFairApi.updateCareerFairState(selectedFair.id, nextState);
+      const source = selectedFair.externalId.startsWith('external-') ? 'external' : 'internal';
+      const savedState = await careerFairApi.updateCareerFairState(selectedFair.id, nextState, source);
       setFairState(savedState);
       if (feedMode === 'favorites' && !savedState.isFavorited) {
         await fetchCareerFairs(0, 'favorites');

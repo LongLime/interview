@@ -199,11 +199,13 @@ export default function SettingsPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [providerList, defaultProvider, asr, tts] = await Promise.all([
+      const [providerList, defaultProvider] = await Promise.all([
         llmProviderApi.list(),
         llmProviderApi.getDefaultProvider(),
-        llmProviderApi.getAsrConfig(),
-        llmProviderApi.getTtsConfig(),
+      ]);
+      const [asr, tts] = await Promise.all([
+        llmProviderApi.getAsrConfig().catch(() => null),
+        llmProviderApi.getTtsConfig().catch(() => null),
       ]);
       setProviders(providerList);
       setDefaultProviderId(defaultProvider.defaultProvider);

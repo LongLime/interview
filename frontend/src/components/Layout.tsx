@@ -109,9 +109,11 @@ export default function Layout() {
     }
     if (path === '/recruitment-events') {
       return currentPath === '/recruitment-events'
-        || currentPath.startsWith('/recruitment-events/')
         || currentPath === '/career-fair'
         || currentPath.startsWith('/career-fair/');
+    }
+    if (path === '/recruitment-events/schedule') {
+      return currentPath === path;
     }
     return currentPath.startsWith(path);
   };
@@ -187,15 +189,19 @@ export default function Layout() {
 
           {/* User Info */}
           {user && (
-            <div className="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors cursor-pointer">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between px-4 py-3 rounded-lg hover:bg-surface-container-high dark:hover:bg-surface-container-highest transition-colors">
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="flex min-w-0 flex-1 items-center gap-3 text-left"
+              >
                 <div className="w-8 h-8 rounded-full bg-surface-variant flex items-center justify-center text-primary">
                   <span className="material-symbols-outlined text-[20px]">person</span>
                 </div>
                 <div className="flex flex-col">
                   <span className="font-label-md text-label-md text-on-surface">{user.nickname || user.username}</span>
                 </div>
-              </div>
+              </button>
               <button
                 onClick={() => {
                   logout();

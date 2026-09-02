@@ -1,7 +1,4 @@
-import {getErrorMessage, request} from './request';
-import axios from 'axios';
-
-const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:8080';
+import { getApiUrl, getErrorMessage, request } from './request';
 
 // 向量化状态
 export type VectorStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
@@ -48,6 +45,38 @@ export interface UploadKnowledgeBaseResponse {
   duplicate: boolean;
 }
 
+interface UnifiedKnowledgeBase {
+  id: number;
+  name: string;
+  description: string | null;
+  document_count: number;
+  created_at: string;
+}
+
+interface UnifiedDocument {
+  doc_id: number;
+  file_name: string;
+  vector_status: string;
+}
+
+function mapKnowledgeBase(item: UnifiedKnowledgeBase): KnowledgeBaseItem {
+  return {
+    id: item.id,
+    name: item.name,
+    category: null,
+    originalFilename: item.name,
+    fileSize: 0,
+    contentType: 'application/octet-stream',
+    uploadedAt: item.created_at,
+    lastAccessedAt: item.created_at,
+    accessCount: 0,
+    questionCount: 0,
+    vectorStatus: item.document_count > 0 ? 'COMPLETED' : 'PROCESSING',
+    vectorError: null,
+    chunkCount: 0,
+  };
+}
+
 export interface QueryRequest {
   knowledgeBaseIds: number[];  // 支持多个知识库
   question: string;
@@ -64,54 +93,62 @@ export const knowledgeBaseApi = {
    * 上传知识库文件
    */
   async uploadKnowledgeBase(file: File, name?: string, category?: string): Promise<UploadKnowledgeBaseResponse> {
+    const base = await request.post<{ id: number; name: string; description: string | null }>(
+      '/api/knowledge/bases',
+      { name: name?.trim() || file.name, description: category || null },
+    );
     const formData = new FormData();
     formData.append('file', file);
-    if (name) {
-      formData.append('name', name);
-    }
-    if (category) {
-      formData.append('category', category);
-    }
-    return request.upload<UploadKnowledgeBaseResponse>('/api/knowledgebase/upload', formData);
+    const document = await request.upload<UnifiedDocument>(
+      `/api/knowledge/bases/${base.id}/upload`,
+      formData,
+    );
+    return {
+      knowledgeBase: {
+        id: base.id,
+        name: base.name,
+        category: category || '',
+        fileSize: file.size,
+        contentLength: file.size,
+      },
+      storage: { fileKey: document.file_name, fileUrl: '' },
+      duplicate: false,
+    };
   },
 
     /**
      * 下载知识库文件
      */
     async downloadKnowledgeBase(id: number): Promise<Blob> {
-        const response = await axios.get(`${API_BASE_URL}/api/knowledgebase/${id}/download`, {
-            responseType: 'blob',
-        });
-        return response.data;
+      throw new Error(`统一知识库暂不支持下载（知识库 ${id}）`);
     },
 
   /**
    * 获取所有知识库列表
    */
   async getAllKnowledgeBases(sortBy?: SortOption, vectorStatus?: 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED'): Promise<KnowledgeBaseItem[]> {
-    const params = new URLSearchParams();
-    if (sortBy) {
-      params.append('sortBy', sortBy);
-    }
-    if (vectorStatus) {
-      params.append('vectorStatus', vectorStatus);
-    }
-    const queryString = params.toString();
-    return request.get<KnowledgeBaseItem[]>(`/api/knowledgebase/list${queryString ? `?${queryString}` : ''}`);
+    const response = await request.get<{ list: UnifiedKnowledgeBase[] }>('/api/knowledge/bases');
+    let result = response.list.map(mapKnowledgeBase);
+    if (vectorStatus) result = result.filter(item => item.vectorStatus === vectorStatus);
+    if (sortBy === 'size') result.sort((a, b) => b.fileSize - a.fileSize);
+    return result;
   },
 
   /**
    * 获取知识库详情
    */
   async getKnowledgeBase(id: number): Promise<KnowledgeBaseItem> {
-    return request.get<KnowledgeBaseItem>(`/api/knowledgebase/${id}`);
+    const list = await this.getAllKnowledgeBases();
+    const item = list.find(base => base.id === id);
+    if (!item) throw new Error('知识库不存在');
+    return item;
   },
 
   /**
    * 删除知识库
    */
   async deleteKnowledgeBase(id: number): Promise<void> {
-    return request.delete(`/api/knowledgebase/${id}`);
+    return request.delete(`/api/knowledge/bases/${id}`);
   },
 
   // ========== 分类管理 ==========
@@ -120,28 +157,30 @@ export const knowledgeBaseApi = {
    * 获取所有分类
    */
   async getAllCategories(): Promise<string[]> {
-    return request.get<string[]>('/api/knowledgebase/categories');
+    return [];
   },
 
   /**
    * 根据分类获取知识库
    */
   async getByCategory(category: string): Promise<KnowledgeBaseItem[]> {
-    return request.get<KnowledgeBaseItem[]>(`/api/knowledgebase/category/${encodeURIComponent(category)}`);
+    const list = await this.getAllKnowledgeBases();
+    return list.filter(item => item.category === category);
   },
 
   /**
    * 获取未分类的知识库
    */
   async getUncategorized(): Promise<KnowledgeBaseItem[]> {
-    return request.get<KnowledgeBaseItem[]>('/api/knowledgebase/uncategorized');
+    const list = await this.getAllKnowledgeBases();
+    return list.filter(item => !item.category);
   },
 
   /**
    * 更新知识库分类
    */
-  async updateCategory(id: number, category: string | null): Promise<void> {
-    return request.put(`/api/knowledgebase/${id}/category`, { category });
+  async updateCategory(_id: number, _category: string | null): Promise<void> {
+    throw new Error('统一知识库暂不支持分类管理');
   },
 
   // ========== 搜索 ==========
@@ -150,7 +189,9 @@ export const knowledgeBaseApi = {
    * 搜索知识库
    */
   async search(keyword: string): Promise<KnowledgeBaseItem[]> {
-    return request.get<KnowledgeBaseItem[]>(`/api/knowledgebase/search?keyword=${encodeURIComponent(keyword)}`);
+    const list = await this.getAllKnowledgeBases();
+    const normalized = keyword.toLowerCase();
+    return list.filter(item => item.name.toLowerCase().includes(normalized));
   },
 
   // ========== 统计 ==========
@@ -159,7 +200,14 @@ export const knowledgeBaseApi = {
    * 获取知识库统计信息
    */
   async getStatistics(): Promise<KnowledgeBaseStats> {
-    return request.get<KnowledgeBaseStats>('/api/knowledgebase/stats');
+    const list = await this.getAllKnowledgeBases();
+    return {
+      totalCount: list.length,
+      totalQuestionCount: list.reduce((sum, item) => sum + item.questionCount, 0),
+      totalAccessCount: list.reduce((sum, item) => sum + item.accessCount, 0),
+      completedCount: list.filter(item => item.vectorStatus === 'COMPLETED').length,
+      processingCount: list.filter(item => item.vectorStatus === 'PROCESSING' || item.vectorStatus === 'PENDING').length,
+    };
   },
 
   // ========== 向量化管理 ==========
@@ -168,16 +216,14 @@ export const knowledgeBaseApi = {
    * 重新向量化知识库（手动重试）
    */
   async revectorize(id: number): Promise<void> {
-    return request.post(`/api/knowledgebase/${id}/revectorize`);
+    throw new Error(`统一知识库暂不支持重新向量化（知识库 ${id}）`);
   },
 
   /**
    * 基于知识库回答问题
    */
-  async queryKnowledgeBase(req: QueryRequest): Promise<QueryResponse> {
-    return request.post<QueryResponse>('/api/knowledgebase/query', req, {
-      timeout: 180000, // 3分钟超时
-    });
+  async queryKnowledgeBase(_req: QueryRequest): Promise<QueryResponse> {
+    throw new Error('统一知识库问答仅支持流式模式');
   },
 
   /**
@@ -191,11 +237,14 @@ export const knowledgeBaseApi = {
     onError: (error: Error) => void
   ): Promise<void> {
     try {
-      const response = await fetch(`${API_BASE_URL}/api/knowledgebase/query/stream`, {
+      const token = localStorage.getItem('auth_token');
+      const response = await fetch(getApiUrl('/api/knowledgebase/query/stream'), {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
+        credentials: 'include',
         body: JSON.stringify(req),
       });
 

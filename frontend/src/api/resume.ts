@@ -13,11 +13,21 @@ export const resumeApi = {
   }): Promise<UploadResponse> {
     const formData = new FormData();
     formData.append('file', file);
-    formData.append('analysis_mode', options?.mode || 'GENERAL');
+    if (options?.mode) formData.append('analysis_mode', options.mode);
     if (options?.title) formData.append('job_title', options.title);
     if (options?.company) formData.append('company_name', options.company);
     if (options?.jdText) formData.append('jd_text', options.jdText);
-    return request.upload<UploadResponse>('/api/resumes/upload', formData);
+    return request.upload<{
+      storage: { fileKey: string; fileUrl: string; resumeId: number };
+      status: string;
+    }>('/api/resumes/upload', formData).then((result) => ({
+      storage: {
+        fileKey: result.storage.fileKey,
+        fileUrl: result.storage.fileUrl,
+        resumeId: result.storage.resumeId,
+      },
+      message: result.status,
+    }));
   },
 
   /**
@@ -41,6 +51,6 @@ export const resumeApi = {
    * 健康检查
    */
   async healthCheck(): Promise<{ status: string; service: string }> {
-    return request.get('/api/resumes/health');
+    return request.get('/health');
   },
 };

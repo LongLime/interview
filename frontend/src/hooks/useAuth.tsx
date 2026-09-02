@@ -16,27 +16,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const token = localStorage.getItem('auth_token');
-    if (token) {
-      authApi.getMe()
-        .then(setUser)
-        .catch(() => localStorage.removeItem('auth_token'))
-        .finally(() => setLoading(false));
-    } else {
-      setLoading(false);
-    }
+    const restoreSession = async () => {
+      try {
+        if (!localStorage.getItem('auth_token')) {
+          await authApi.refresh();
+        }
+        setUser(await authApi.getMe());
+      } catch {
+        try {
+          const refreshed = await authApi.refresh();
+          setUser(authApi.toUserInfo(refreshed.session));
+        } catch {
+          localStorage.removeItem('auth_token');
+        }
+      }
+    };
+
+    restoreSession()
+      .finally(() => setLoading(false));
   }, []);
 
   const login = async (data: LoginRequest) => {
     const res = await authApi.login(data);
-    localStorage.setItem('auth_token', res.token);
-    setUser({ id: 0, username: res.username, nickname: res.nickname, role: res.role });
+    localStorage.setItem('auth_token', res.access_token);
+    setUser(authApi.toUserInfo(res.session));
   };
 
   const register = async (data: RegisterRequest) => {
     const res = await authApi.register(data);
-    localStorage.setItem('auth_token', res.token);
-    setUser({ id: 0, username: res.username, nickname: res.nickname, role: res.role });
+    localStorage.setItem('auth_token', res.access_token);
+    setUser(authApi.toUserInfo(res.session));
   };
 
   const logout = () => {

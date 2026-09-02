@@ -6,24 +6,55 @@ import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
 interface Result<T = unknown> {
   code: number;
   message: string;
-  data: T;
+  data?: T;
+  result?: T;
+}
+
+interface RetryableAxiosConfig extends AxiosRequestConfig {
+  _retry?: boolean;
 }
 
 const getBaseURL = () => {
   const env = import.meta.env.VITE_API_BASE_URL;
   if (env) return env;
 
-  if (import.meta.env.PROD) return '';
-
-  return `http://${window.location.hostname}:8080`;
+  return '';
 };
 
 const baseURL = getBaseURL();
 
+export function getApiUrl(path: string): string {
+  return `${baseURL}${path}`;
+}
+
 const instance: AxiosInstance = axios.create({
   baseURL,
   timeout: 60000,
+  withCredentials: true,
 });
+
+let refreshPromise: Promise<string> | null = null;
+
+async function refreshAccessToken(): Promise<string> {
+  if (refreshPromise) return refreshPromise;
+
+  refreshPromise = axios.post(
+    `${baseURL}/api/auth/refresh`,
+    { portal: 'student' },
+    { withCredentials: true },
+  ).then((response) => {
+    const token = response.data?.access_token;
+    if (typeof token !== 'string' || !token) {
+      throw new Error('认证服务返回了无效令牌');
+    }
+    localStorage.setItem('auth_token', token);
+    return token;
+  }).finally(() => {
+    refreshPromise = null;
+  });
+
+  return refreshPromise;
+}
 
 instance.interceptors.request.use(
   (config) => {
@@ -49,9 +80,8 @@ instance.interceptors.response.use(
     
     // 检查是否是 Result 格式
     if (result && typeof result === 'object' && 'code' in result) {
-      if (result.code === 200) {
-        // 成功：返回 data
-        response.data = result.data;
+      if (result.code === 200 || result.code === 10000) {
+        response.data = result.data ?? result.result;
         return response;
       }
       // 失败：直接抛出 message
@@ -61,14 +91,33 @@ instance.interceptors.response.use(
     // 非 Result 格式，直接返回
     return response;
   },
-  (error) => {
+  async (error) => {
     // 有响应的情况：后端返回了结果（即使是错误）
     if (error.response) {
+      const config = error.config as RetryableAxiosConfig | undefined;
+      const isAuthRequest = config?.url?.includes('/api/auth/') === true;
+      if (error.response.status === 401 && config && !config._retry && !isAuthRequest) {
+        config._retry = true;
+        try {
+          const token = await refreshAccessToken();
+          config.headers = { ...config.headers, Authorization: `Bearer ${token}` };
+          return instance.request(config);
+        } catch {
+          localStorage.removeItem('auth_token');
+        }
+      }
+
       const { data } = error.response;
       // 尝试解析 Result 格式
       if (data && typeof data === 'object' && 'code' in data && 'message' in data) {
         const result = data as Result;
         return Promise.reject(new Error(result.message || '请求失败'));
+      }
+      if (data && typeof data === 'object' && 'detail' in data) {
+        const detail = (data as { detail?: unknown }).detail;
+        if (typeof detail === 'string' && detail) {
+          return Promise.reject(new Error(detail));
+        }
       }
       // 响应格式不对
       return Promise.reject(new Error('请求失败，请重试'));
@@ -87,6 +136,10 @@ instance.interceptors.response.use(
       // 文件上传失败且没有响应，可能是网络超时或连接中断
       // 不直接假设是文件大小问题，返回更通用的错误信息
       return Promise.reject(new Error('上传失败，可能是网络超时或连接中断，请重试'));
+    }
+
+    if (error.code === 'ECONNABORTED' || error.code === 'ETIMEDOUT') {
+      return Promise.reject(new Error('推荐数据加载超时，请稍后重试'));
     }
 
     // 其他网络错误
@@ -121,7 +174,6 @@ export const request = {
   upload<T>(url: string, formData: FormData, config?: AxiosRequestConfig): Promise<T> {
     return instance.post(url, formData, {
       timeout: 300000, // 5分钟，与Nginx proxy_read_timeout对齐
-      headers: { 'Content-Type': 'multipart/form-data' },
       ...config,
     }).then(res => res.data);
   },

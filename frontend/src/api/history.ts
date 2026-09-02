@@ -3,6 +3,15 @@ import { request } from './request';
 export type AnalyzeStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 export type EvaluateStatus = 'PENDING' | 'PROCESSING' | 'COMPLETED' | 'FAILED';
 
+function normalizeAnalyzeStatus(status: string): AnalyzeStatus {
+  const normalized = status.toUpperCase();
+  if (normalized === 'ANALYZING') return 'PROCESSING';
+  if (normalized === 'PENDING' || normalized === 'COMPLETED' || normalized === 'FAILED') {
+    return normalized;
+  }
+  return 'PENDING';
+}
+
 export interface ResumeListItem {
   id: number;
   filename: string;
@@ -121,14 +130,66 @@ export const historyApi = {
    * 获取所有简历列表
    */
   async getResumes(): Promise<ResumeListItem[]> {
-    return request.get<ResumeListItem[]>('/api/resumes');
+    const response = await request.get<Array<{
+      id: number;
+      filename: string;
+      fileSize: number;
+      uploadedAt: string;
+      accessCount: number;
+      latestScore?: number | null;
+      lastAnalyzedAt?: string | null;
+      interviewCount: number;
+      analyzeStatus: string;
+      analyzeError?: string | null;
+      storageUrl?: string | null;
+    }>>('/api/resumes');
+    return response.map(resume => ({
+      id: resume.id,
+      filename: resume.filename,
+      fileSize: resume.fileSize,
+      uploadedAt: resume.uploadedAt,
+      accessCount: resume.accessCount,
+      latestScore: resume.latestScore ?? undefined,
+      lastAnalyzedAt: resume.lastAnalyzedAt ?? undefined,
+      interviewCount: resume.interviewCount,
+      analyzeStatus: normalizeAnalyzeStatus(resume.analyzeStatus),
+      analyzeError: resume.analyzeError ?? undefined,
+      storageUrl: resume.storageUrl ?? undefined,
+    }));
   },
 
   /**
    * 获取简历详情
    */
   async getResumeDetail(id: number): Promise<ResumeDetail> {
-    return request.get<ResumeDetail>(`/api/resumes/${id}/detail`);
+    const resume = await request.get<{
+        id: number;
+        filename: string;
+        fileSize: number;
+        contentType: string;
+        storageUrl: string;
+        uploadedAt: string;
+        accessCount: number;
+        resumeText: string;
+        analyzeStatus: string;
+        analyzeError?: string | null;
+        analyses: AnalysisItem[];
+        interviews: InterviewItem[];
+    }>(`/api/resumes/${id}/detail`);
+    return {
+      id: resume.id,
+      filename: resume.filename,
+      fileSize: resume.fileSize,
+      contentType: resume.contentType,
+      storageUrl: resume.storageUrl,
+      uploadedAt: resume.uploadedAt,
+      accessCount: resume.accessCount,
+      resumeText: resume.resumeText,
+      analyzeStatus: normalizeAnalyzeStatus(resume.analyzeStatus),
+      analyzeError: resume.analyzeError ?? undefined,
+      analyses: resume.analyses,
+      interviews: resume.interviews,
+    };
   },
 
   /**

@@ -1,6 +1,4 @@
-import { request, getErrorMessage } from './request';
-
-const API_BASE_URL = import.meta.env.PROD ? '' : 'http://localhost:8080';
+import { getApiUrl, request, getErrorMessage } from './request';
 
 // ========== 类型定义 ==========
 
@@ -11,11 +9,25 @@ export interface RagChatSession {
   createdAt: string;
 }
 
+interface UnifiedChat {
+  id: number;
+  title: string;
+  message_count: number;
+  created_at: string;
+}
+
+interface UnifiedChatGroup {
+  kb_id: number;
+  kb_name: string;
+  chats: UnifiedChat[];
+}
+
 export interface RagChatSessionListItem {
   id: number;
   title: string;
   messageCount: number;
   knowledgeBaseNames: string[];
+  knowledgeBaseIds?: number[];
   updatedAt: string;
   isPinned: boolean;
 }
@@ -55,54 +67,104 @@ export const ragChatApi = {
    * 创建新会话
    */
   async createSession(knowledgeBaseIds: number[], title?: string): Promise<RagChatSession> {
-    return request.post<RagChatSession>('/api/rag-chat/sessions', {
-      knowledgeBaseIds,
-      title,
-    });
+    if (knowledgeBaseIds.length !== 1) {
+      throw new Error('统一知识库问答一次只能选择一个知识库');
+    }
+    const result = await request.post<{ chat_id: number; title: string; kb_id: number }>(
+      '/api/knowledge/chat/start',
+      { kb_id: knowledgeBaseIds[0], title },
+    );
+    return {
+      id: result.chat_id,
+      title: result.title,
+      knowledgeBaseIds: [result.kb_id],
+      createdAt: new Date().toISOString(),
+    };
   },
 
   /**
    * 获取会话列表
    */
   async listSessions(): Promise<RagChatSessionListItem[]> {
-    return request.get<RagChatSessionListItem[]>('/api/rag-chat/sessions');
+    const response = await request.get<{ groups: UnifiedChatGroup[] }>('/api/knowledge/chats');
+    return response.groups.flatMap(group => group.chats.map(chat => ({
+      id: chat.id,
+      title: chat.title,
+      messageCount: chat.message_count,
+      knowledgeBaseNames: [group.kb_name],
+      knowledgeBaseIds: [group.kb_id],
+      updatedAt: chat.created_at,
+      isPinned: false,
+    })));
   },
 
   /**
    * 获取会话详情
    */
   async getSessionDetail(sessionId: number): Promise<RagChatSessionDetail> {
-    return request.get<RagChatSessionDetail>(`/api/rag-chat/sessions/${sessionId}`);
+    const response = await request.get<{
+      chat_id: number;
+      messages: Array<{ id: number; role: 'user' | 'assistant'; content: string; created_at: string }>;
+    }>(`/api/knowledge/chat/${sessionId}/history`);
+    const sessions = await this.listSessions();
+    const summary = sessions.find(session => session.id === sessionId);
+    return {
+      id: sessionId,
+      title: summary?.title || `对话 ${sessionId}`,
+      knowledgeBases: (summary?.knowledgeBaseIds || []).map(id => ({
+        id,
+        name: summary?.knowledgeBaseNames[0] || '',
+        originalFilename: '',
+        fileSize: 0,
+        contentType: 'application/octet-stream',
+        uploadedAt: summary?.updatedAt || '',
+        lastAccessedAt: summary?.updatedAt || '',
+        accessCount: 0,
+        questionCount: 0,
+      })),
+      messages: response.messages.map(message => ({
+        id: message.id,
+        type: message.role,
+        content: message.content,
+        createdAt: message.created_at,
+      })),
+      createdAt: summary?.updatedAt || new Date().toISOString(),
+      updatedAt: summary?.updatedAt || new Date().toISOString(),
+    };
   },
 
   /**
    * 更新会话标题
    */
   async updateSessionTitle(sessionId: number, title: string): Promise<void> {
-    return request.put(`/api/rag-chat/sessions/${sessionId}/title`, { title });
+    void sessionId;
+    void title;
+    throw new Error('统一知识库暂不支持修改对话标题');
   },
 
   /**
    * 更新会话知识库
    */
   async updateKnowledgeBases(sessionId: number, knowledgeBaseIds: number[]): Promise<void> {
-    return request.put(`/api/rag-chat/sessions/${sessionId}/knowledge-bases`, {
-      knowledgeBaseIds,
-    });
+    void sessionId;
+    void knowledgeBaseIds;
+    throw new Error('统一知识库暂不支持修改对话知识库');
   },
 
   /**
    * 切换会话置顶状态
    */
   async togglePin(sessionId: number): Promise<void> {
-    return request.put(`/api/rag-chat/sessions/${sessionId}/pin`);
+    void sessionId;
+    throw new Error('统一知识库暂不支持置顶对话');
   },
 
   /**
    * 删除会话
    */
   async deleteSession(sessionId: number): Promise<void> {
-    return request.delete(`/api/rag-chat/sessions/${sessionId}`);
+    void sessionId;
+    throw new Error('统一知识库暂不支持删除对话');
   },
 
   /**
@@ -116,11 +178,16 @@ export const ragChatApi = {
     onError: (error: Error) => void
   ): Promise<void> {
     try {
+      const token = localStorage.getItem('auth_token');
       const response = await fetch(
-        `${API_BASE_URL}/api/rag-chat/sessions/${sessionId}/messages/stream`,
+        getApiUrl(`/api/knowledge/chat/${sessionId}/ask`),
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            ...(token ? { Authorization: `Bearer ${token}` } : {}),
+          },
+          credentials: 'include',
           body: JSON.stringify({ question }),
         }
       );
@@ -207,7 +274,12 @@ export const ragChatApi = {
 
         const content = extractEventContent(eventBlock);
         if (content !== null) {
-          onMessage(content);
+          try {
+            const payload = JSON.parse(content) as { content?: string; done?: boolean };
+            if (payload.content) onMessage(payload.content);
+          } catch {
+            onMessage(content);
+          }
         }
       }
     } catch (error) {
