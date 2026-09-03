@@ -76,6 +76,10 @@ export default function Interview({
     setError('');
 
     try {
+      if (!resumeText.trim()) {
+        throw new Error('简历正文为空，请先完成简历分析或重新加载简历');
+      }
+
       const newSession = await interviewApi.createSession({
         resumeText,
         questionCount,

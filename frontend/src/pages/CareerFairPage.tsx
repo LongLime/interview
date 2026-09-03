@@ -65,12 +65,13 @@ export default function CareerFairPage() {
     setDetailLoading(true);
     try {
       const source = fair.externalId.startsWith('external-') ? 'external' : 'internal';
-      const [detail, state] = await Promise.all([
-        careerFairApi.getCareerFairById(fair.id, source),
-        careerFairApi.getCareerFairState(fair.id, source),
-      ]);
+      const detail = await careerFairApi.getCareerFairById(fair.id, source);
       setSelectedFair(detail);
-      setFairState(state);
+      try {
+        setFairState(await careerFairApi.getCareerFairState(fair.id, source));
+      } catch {
+        setFairState(null);
+      }
     } catch (err) {
       setDetailError(getErrorMessage(err));
     } finally {
