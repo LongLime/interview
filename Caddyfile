@@ -1,0 +1,12 @@
+:80 {
+    root * /srv/interview
+
+    handle /assets/* {
+        file_server
+    }
+
+    handle {
+        try_files {path} /index.html
+        file_server
+    }
+}

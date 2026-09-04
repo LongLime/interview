@@ -18,9 +18,12 @@
 **/dist
 **/build
 **/.pnpm-store
-pnpm-lock.yaml
 package-lock.json
 yarn.lock
+!frontend/tsconfig*.json
+!frontend/vite.config.*
+!frontend/index.html
+!frontend/postcss.config.js
 
 # IDE & Editors
 .idea

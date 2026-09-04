@@ -11,7 +11,8 @@
 > 当前桌面端运行路径为 `frontend/ -> job_app/backend`：`frontend/` 通过 Vite 代理调用同一
 > 工作区 `job_app/backend` 的统一 API（本地联调端口 `8081`），与 job_app 学生端共用接口和
 > 数据。此仓库的 `backend/` 仍保留为可独立运行的原有面试平台后端；根目录 `app/` 中的
-> Spring Boot 源码仅作为 legacy reference 保留。
+> Spring Boot 源码仅作为 legacy reference 保留。生产桌面端由 Caddy 提供静态 SPA 文件，
+> 不使用 Nginx；外层 Caddy 负责将 API 和 WebSocket 转发到统一后端。
 
 ## 功能
 
@@ -173,9 +174,21 @@ pnpm dev
 docker compose up -d --build
 ```
 
-- 前端：<http://localhost>
-- API：<http://localhost:8080>
-- OpenAPI：<http://localhost:8080/docs>
+桌面端镜像使用根目录的 `Dockerfile`：Node.js 只负责构建 `frontend/`，最终运行时为
+`caddy:2-alpine`，静态文件位于容器 `/srv/interview`。`Caddyfile` 为 SPA 路由提供
+`index.html` fallback，但 `/assets/*` 缺失文件严格返回 `404`，避免旧动态 chunk 被错误地
+返回 HTML。
+
+在 job_app 统一部署中，外层 Caddy 通过 Docker Compose 服务名转发：桌面端使用
+`interview:80`，移动端使用 `mobile:80`，API 和 WebSocket 使用 `backend:8081`。线上目录为
+`/root/job_app`，桌面容器名为 `job-app-interview`。
+
+- 本地独立 Compose 前端：<http://localhost>
+- 本地独立 Compose API：<http://localhost:8080>
+- 本地独立 Compose OpenAPI：<http://localhost:8080/docs>
+
+构建前端镜像时必须保留 `frontend/tsconfig*.json`、`frontend/vite.config.*`、
+`frontend/index.html` 和 `frontend/postcss.config.js`；这些文件由 Docker 构建阶段显式复制。
 
 Compose 为首次体验设置了 `AUTO_CREATE_TABLES=true`。生产环境必须设置为 `false`，替换默认
 PostgreSQL、MinIO 和 JWT 凭据，并在发布前执行 Alembic 迁移。
